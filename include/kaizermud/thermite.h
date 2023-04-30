@@ -1,8 +1,8 @@
 #pragma once
+#include "kaizermud/base.h"
 #include <boost/asio.hpp>
 #include <boost/beast/websocket.hpp>
 #include <boost/beast.hpp>
-#include <boost/asio/experimental/channel.hpp>
 #include <boost/json.hpp>
 #include <string>
 
@@ -16,8 +16,7 @@ namespace kaizermud::thermite {
     // it will attempt to reconnect endlessly until it re-establishes connection.
     class LinkManager {
     public:
-        using Channel = boost::asio::experimental::channel<void(boost::system::error_code, boost::json::value)>;
-        Channel channel;
+        spsc_channel<boost::json::value> linkChan;
         explicit LinkManager(boost::asio::io_context& ioc, boost::asio::ip::tcp::endpoint ep);
 
         boost::asio::awaitable<void> run();
@@ -34,7 +33,6 @@ namespace kaizermud::thermite {
     // to relay game events to the client.
     class Link {
     public:
-        using Channel = boost::asio::experimental::channel<void(boost::system::error_code, boost::json::value)>;
         explicit Link(LinkManager& lm, boost::beast::websocket::stream<boost::beast::tcp_stream>& ws);
 
         boost::asio::awaitable<void> run();

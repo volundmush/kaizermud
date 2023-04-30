@@ -1,11 +1,14 @@
 #include "kaizermud/game.h"
-
+#include <chrono>
+#include <boost/asio/steady_timer.hpp>
 
 namespace kaizermud::game {
+    using namespace std::chrono_literals;
 
     namespace state {
         std::vector<std::optional<Object>> objects;
         std::set<int64_t> free_ids;
+        std::set<uint64_t> pending_connections, disconnected_connections;
         std::unordered_map<uint64_t, std::shared_ptr<kaizermud::net::ClientConnection>> connections;
     }
 
@@ -73,6 +76,66 @@ namespace kaizermud::game {
 
         // Object not found or timestamp mismatch
         return std::nullopt;
+    }
+
+    boost::asio::awaitable<void> process_connections() {
+        // First, handle any disconnected connections.
+        for (const auto &id : state::disconnected_connections) {
+            auto it = state::connections.find(id);
+            if (it != state::connections.end()) {
+                auto& conn = it->second;
+                conn->onNetworkDisconnected();
+                state::connections.erase(it);
+            }
+        }
+        state::disconnected_connections.clear();
+
+        // Second, welcome any new connections!
+        for(const auto& id : state::pending_connections) {
+            auto it = state::connections.find(id);
+            if (it != state::connections.end()) {
+                auto& conn = it->second;
+                // Need a proper welcoming later....
+                conn->onWelcome();
+            }
+        }
+        state::pending_connections.clear();
+
+        // Next, we must handle the heartbeat routine for each connection.
+        for(auto& [id, conn] : state::connections) {
+            conn->onHeartbeat();
+        }
+
+        co_return;
+    }
+
+    boost::asio::awaitable<void> process_tasks() {
+        co_return;
+    }
+
+    boost::asio::awaitable<void> heartbeat() {
+        co_await process_connections();
+        co_await process_tasks();
+
+        co_return;
+    }
+
+    boost::asio::awaitable<void> load() {
+        co_return;
+    }
+
+    boost::asio::awaitable<void> run() {
+        co_await load();
+
+        boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor, 100ms);
+
+        while(true) {
+            co_await timer.async_wait(boost::asio::use_awaitable);
+            co_await heartbeat();
+        }
+
+        co_return;
+
     }
 
 }

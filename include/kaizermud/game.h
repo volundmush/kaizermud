@@ -6,6 +6,7 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
+#include <boost/asio/experimental/channel.hpp>
 #include "kaizermud/thermite.h"
 #include "kaizermud/net.h"
 
@@ -75,6 +76,7 @@ namespace kaizermud::game {
     namespace state {
         extern std::vector<std::optional<Object>> objects;
         extern std::set<int64_t> free_ids; // this will store like 100 vector slots that are currently unused to reduce scans.
+        extern std::set<uint64_t> pending_connections, disconnected_connections;
         extern std::unordered_map<uint64_t, std::shared_ptr<kaizermud::net::ClientConnection>> connections;
     }
 
@@ -93,5 +95,12 @@ namespace kaizermud::game {
         int64_t object_id_;
         uint64_t timestamp_;
     };
+
+
+    boost::asio::awaitable<void> process_connections();
+    boost::asio::awaitable<void> process_tasks();
+    boost::asio::awaitable<void> load();
+    boost::asio::awaitable<void> heartbeat();
+    boost::asio::awaitable<void> run();
 
 }

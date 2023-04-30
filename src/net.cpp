@@ -3,8 +3,6 @@
 
 namespace kaizermud::net {
 
-    ClientConnection::ClientConnection(uint64_t conn_id, Channel chan) : conn_id(conn_id), fromLink(std::move(chan)) {}
-
     void ProtocolCapabilities::deserialize(const boost::json::value &j) {
         using namespace boost::json;
         object obj = j.as_object();
@@ -54,6 +52,27 @@ namespace kaizermud::net {
         osc_color_palette = obj["osc_color_palette"].as_bool();
         proxy = obj["proxy"].as_bool();
         mnes = obj["mnes"].as_bool();
+    }
+
+    void ClientConnection::onWelcome() {
+        sendText("Welcome to KaizerMUD!\r\n");
+    }
+
+    void ClientConnection::onNetworkDisconnected() {
+
+    }
+
+    void ClientConnection::onHeartbeat() {
+
+    }
+
+    void ClientConnection::sendText(const std::string &text) {
+        boost::json::object jobj;
+        jobj["kind"] = "session_text";
+        jobj["id"] = this->conn_id;
+        jobj["text"] = text;
+
+        lm.linkChan.try_send(boost::system::error_code{}, static_cast<boost::json::value>(jobj));
     }
 
 }

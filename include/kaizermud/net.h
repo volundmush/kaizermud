@@ -10,9 +10,9 @@
 #include <list>
 #include <boost/json.hpp>
 #include <optional>
-#include <boost/asio/experimental/channel.hpp>
 #include <boost/system.hpp>
 #include <boost/asio/error.hpp>
+#include "kaizermud/thermite.h"
 
 namespace kaizermud::net {
 
@@ -47,10 +47,11 @@ namespace kaizermud::net {
 
     class ClientConnection {
     public:
-        using Channel = boost::asio::experimental::channel<void(boost::system::error_code, boost::json::value)>;
-        ClientConnection(uint64_t conn_id, Channel chan);
+        ClientConnection(kaizermud::thermite::LinkManager &lm, uint64_t conn_id, spsc_channel<boost::json::value> chan)
+        : lm(lm), conn_id(conn_id), fromLink(std::move(chan)) {}
         // Some time structs to handle when we received connections.
         // These probably need some updating on this and Thermite side...
+        kaizermud::thermite::LinkManager &lm;
         time_t connected{};
         time_t last_activity{};
         time_t last_read{};
@@ -80,7 +81,11 @@ namespace kaizermud::net {
         void sendMSSP(const std::vector<std::tuple<std::string, std::string>> &data);
         void sendGMCP(const std::string &txt);
 
-        Channel fromLink;
+        spsc_channel<boost::json::value> fromLink;
+
+        void onWelcome();
+        void onHeartbeat();
+        void onNetworkDisconnected();
 
     };
 

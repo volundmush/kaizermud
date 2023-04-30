@@ -9,7 +9,7 @@
 namespace kaizermud::thermite {
     using namespace boost::asio::experimental::awaitable_operators;
     LinkManager::LinkManager(boost::asio::io_context& ioc, boost::asio::ip::tcp::endpoint ep)
-            : channel(ioc, 50), endpoint(std::move(ep)), is_stopped(false) {}
+            : linkChan(ioc, 50), endpoint(std::move(ep)), is_stopped(false) {}
 
     boost::asio::awaitable<void> LinkManager::run() {
         bool do_standoff = false;
@@ -70,7 +70,7 @@ namespace kaizermud::thermite {
     }
 
     boost::asio::awaitable<void> Link::createUpdateClient(boost::json::object &v) {
-        uint64_t id = v["id"].as_uint64();
+        uint64_t id = static_cast<uint64_t>(v["id"].as_int64());
         std::string addr = v["addr"].as_string().c_str();
         boost::json::object capabilities = v["capabilities"].as_object();
 
@@ -78,9 +78,10 @@ namespace kaizermud::thermite {
         auto it = kaizermud::game::state::connections.find(id);
         if (it == kaizermud::game::state::connections.end()) {
             // Create a new ClientConnection
-            Channel clientChan(co_await boost::asio::this_coro::executor, 50);
-            auto cc = std::make_shared<kaizermud::net::ClientConnection>(id, std::move(clientChan));
+            spsc_channel<boost::json::value> clientChan(co_await boost::asio::this_coro::executor, 50);
+            auto cc = std::make_shared<kaizermud::net::ClientConnection>(linkManager, id, std::move(clientChan));
             kaizermud::game::state::connections[id] = cc;
+            kaizermud::game::state::pending_connections.insert(id);
         } else {
             // Update the existing ClientConnection
             auto& client_connection = it->second;
@@ -98,6 +99,7 @@ namespace kaizermud::thermite {
 
                 // Deserialize the JSON string
                 auto ws_str = boost::beast::buffers_to_string(buffer.data());
+                std::cout << "Received: " << ws_str << std::endl;
                 auto json_data = boost::json::parse(ws_str);
                 boost::json::object j = json_data.as_object();
 
@@ -171,7 +173,7 @@ namespace kaizermud::thermite {
         while (true) {
             try {
                 // Receive a message from the channel asynchronously
-                boost::json::value message = co_await linkManager.channel.async_receive(boost::asio::use_awaitable);
+                boost::json::value message = co_await linkManager.linkChan.async_receive(boost::asio::use_awaitable);
 
                 try {
                     // Serialize the JSON message to text

@@ -84,5 +84,5 @@ namespace kaizermud::net {
 
     };
 
-    extern std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> connections;
+
 }

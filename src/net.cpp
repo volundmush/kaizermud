@@ -56,5 +56,4 @@ namespace kaizermud::net {
         mnes = obj["mnes"].as_bool();
     }
 
-    std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> connections;
 }

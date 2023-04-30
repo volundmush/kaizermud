@@ -1,6 +1,6 @@
 #include "kaizermud/thermite.h"
-#include "kaizermud/utils.h"
 #include "kaizermud/net.h"
+#include "kaizermud/game.h"
 #include <iostream>
 #include <utility>
 #include <boost/beast/core/buffers_to_string.hpp>
@@ -75,12 +75,12 @@ namespace kaizermud::thermite {
         boost::json::object capabilities = v["capabilities"].as_object();
 
         // Do something with id, addr, and capabilities
-        auto it = kaizermud::net::connections.find(id);
-        if (it == kaizermud::net::connections.end()) {
+        auto it = kaizermud::game::state::connections.find(id);
+        if (it == kaizermud::game::state::connections.end()) {
             // Create a new ClientConnection
             Channel clientChan(co_await boost::asio::this_coro::executor, 50);
             auto cc = std::make_shared<kaizermud::net::ClientConnection>(id, std::move(clientChan));
-            kaizermud::net::connections[id] = cc;
+            kaizermud::game::state::connections[id] = cc;
         } else {
             // Update the existing ClientConnection
             auto& client_connection = it->second;
@@ -90,8 +90,8 @@ namespace kaizermud::thermite {
     }
 
     boost::asio::awaitable<void> Link::runReader() {
-        try {
-            while (true) {
+        while (true) {
+            try {
                 // Read a message from the WebSocket
                 boost::beast::flat_buffer buffer;
                 co_await conn.async_read(buffer, boost::asio::use_awaitable);
@@ -114,7 +114,7 @@ namespace kaizermud::thermite {
                     boost::json::object data = j["data"].as_object();
 
                     // Iterate over the contents of the "data" object
-                    for (const auto& entry : data) {
+                    for (const auto &entry : data) {
                         boost::json::object v = entry.value().as_object();
                         co_await createUpdateClient(v);
                     }
@@ -123,23 +123,35 @@ namespace kaizermud::thermite {
                     // This message is sent by Thermite when a new client has connected.
                     boost::json::object data = j["protocol"].as_object();
                     co_await createUpdateClient(data);
+
                 } else {
                     // Extract the "id" field from the JSON object
                     uint64_t id = j["id"].as_uint64();
 
                     // Look up the specific ClientConnection in the std::map
-                    auto it = kaizermud::net::connections.find(id);
-                    if (it != kaizermud::net::connections.end()) {
+                    auto it = kaizermud::game::state::connections.find(id);
+                    if (it != kaizermud::game::state::connections.end()) {
                         // Found the client connection
-                        auto& client_connection = it->second;
+                        auto &client_connection = it->second;
 
                         if (kind == "client_capabilities") {
                             boost::json::object capabilities = j["capabilities"].as_object();
                             client_connection->capabilities.deserialize(capabilities);
+
                         } else if (kind == "client_line") {
-                            co_await client_connection->fromLink.async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
+                            try {
+                                co_await client_connection->fromLink.async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
+                            } catch (const boost::system::system_error &e) {
+                                // Handle exceptions (e.g., WebSocket close or error)
+                            }
+
                         } else if (kind == "client_gmcp") {
-                            co_await client_connection->fromLink.async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
+                            try {
+                                co_await client_connection->fromLink.async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
+                            } catch (const boost::system::system_error &e) {
+                                // Handle exceptions (e.g., WebSocket close or error)
+                            }
+
                         } else if (kind == "client_disconnected") {
                             // worrying about this later...
                         }
@@ -148,9 +160,9 @@ namespace kaizermud::thermite {
                         // ...
                     }
                 }
+            } catch (const boost::system::system_error &e) {
+                // Handle exceptions (e.g., WebSocket close or error)
             }
-        } catch (const boost::system::system_error& e) {
-            // Handle exceptions (e.g., WebSocket close or error)
         }
         co_return;
     }

@@ -4,8 +4,12 @@
 #include <optional>
 #include <string>
 #include <map>
+#include <unordered_map>
+#include <memory>
+#include "kaizermud/thermite.h"
+#include "kaizermud/net.h"
 
-namespace kaizermud::db {
+namespace kaizermud::game {
 
     class Property {
 
@@ -16,7 +20,7 @@ namespace kaizermud::db {
 
     };
 
-    enum SupervisorLevel {
+    enum SupervisorLevel : uint8_t {
         SL_NONE = 0,
         SL_PLAYER = 1,
         SL_BUILDER = 2,
@@ -32,10 +36,14 @@ namespace kaizermud::db {
         uint8_t sLevel;
     };
 
+    class ObjectReference;
+
     class Object {
     public:
-        Object() = default;
+        Object(int64_t id, uint64_t timestamp)
+                : id(id), timestamp(timestamp) {}
         int64_t id{-1};
+        uint64_t timestamp{0};
         std::string name;
 
         uint8_t sLevel{0};
@@ -60,6 +68,30 @@ namespace kaizermud::db {
         int64_t domain{-1};
         std::set<int64_t> dominion{};
 
+        ObjectReference makeReference() const;
+
+    };
+
+    namespace state {
+        extern std::vector<std::optional<Object>> objects;
+        extern std::set<int64_t> free_ids; // this will store like 100 vector slots that are currently unused to reduce scans.
+        extern std::unordered_map<uint64_t, std::shared_ptr<kaizermud::net::ClientConnection>> connections;
+    }
+
+    void fill_free_ids();
+    std::optional<int64_t> pop_free_id();
+    int64_t get_next_available_id();
+
+    class ObjectReference {
+    public:
+        ObjectReference(int64_t object_id, uint64_t timestamp)
+                : object_id_(object_id), timestamp_(timestamp) {}
+
+        std::optional<std::reference_wrapper<Object>> getObject() const;
+
+    private:
+        int64_t object_id_;
+        uint64_t timestamp_;
     };
 
 }

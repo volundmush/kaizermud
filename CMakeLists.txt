@@ -27,7 +27,7 @@ CPMAddPackage("gh:Roblox/luau#0.570")
 CPMAddPackage("gh:kunitoki/LuaBridge3#3.0-rc3")
 SET(LUABRIDGE_TESTING OFF)
 
-find_package(Boost REQUIRED COMPONENTS system program_options)
+find_package(Boost REQUIRED COMPONENTS system program_options json)
 
 file(GLOB_RECURSE KAIZERMUD_INCLUDE include/*.h)
 file(GLOB_RECURSE KAIZERMUD_SRC src/*.cpp)

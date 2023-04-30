@@ -1,9 +1,11 @@
 #pragma once
 #include <boost/asio.hpp>
 #include <boost/beast/websocket.hpp>
+#include <boost/beast.hpp>
 #include <boost/asio/experimental/channel.hpp>
 #include <boost/json.hpp>
 #include <string>
+
 
 namespace kaizermud::thermite {
 
@@ -32,7 +34,8 @@ namespace kaizermud::thermite {
     // to relay game events to the client.
     class Link {
     public:
-        explicit Link(LinkManager& lm, boost::beast::websocket::stream<boost::asio::ip::tcp::socket>& ws);
+        using Channel = boost::asio::experimental::channel<void(boost::system::error_code, boost::json::value)>;
+        explicit Link(LinkManager& lm, boost::beast::websocket::stream<boost::beast::tcp_stream>& ws);
 
         boost::asio::awaitable<void> run();
         void stop();
@@ -41,8 +44,8 @@ namespace kaizermud::thermite {
         LinkManager& linkManager;
         boost::asio::awaitable<void> runReader();
         boost::asio::awaitable<void> runWriter();
-
-        boost::beast::websocket::stream<boost::asio::ip::tcp::socket>& conn;
+        boost::asio::awaitable<void> createUpdateClient(boost::json::object &v);
+        boost::beast::websocket::stream<boost::beast::tcp_stream>& conn;
         bool is_stopped;
     };
 

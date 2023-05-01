@@ -51,7 +51,7 @@ add_executable(kaizer apps/kaizer.cpp)
 target_link_libraries(kaizermud ${Boost_LIBRARIES} Luau.VM Luau.Common Luau.Compiler)
 target_link_libraries(kaizer ${Boost_LIBRARIES} kaizermud)
 
-
-
+add_executable(ktest apps/ktest.cpp)
+target_link_libraries(ktest ${Boost_LIBRARIES} kaizermud)
 
 SET(kaizer_link ${CMAKE_INSTALL_PREFIX}/bin/)

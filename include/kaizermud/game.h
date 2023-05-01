@@ -6,6 +6,7 @@
 #include <map>
 #include <unordered_map>
 #include <memory>
+#include <chrono>
 #include <boost/asio/experimental/channel.hpp>
 #include "kaizermud/thermite.h"
 #include "kaizermud/net.h"
@@ -18,11 +19,21 @@ namespace kaizermud::game {
     extern lua_CompileOptions compile_options;
 
     struct LuaCode {
-        explicit LuaCode(const std::string &code);
-        ~LuaCode();
-        std::string code;
-        char *bytecode;
-        size_t length;
+        explicit LuaCode(const std::string &code) :code(code) {};
+        ~LuaCode() {
+            if (bytecode) free(bytecode);
+        };
+
+        enum class State : uint8_t {
+            UNCOMPILED,
+            COMPILED,
+            ERROR
+        };
+
+        std::string code{};
+        char *bytecode{nullptr};
+        size_t length{0};
+        State state{State::UNCOMPILED};
 
         void compile();
     };
@@ -31,8 +42,15 @@ namespace kaizermud::game {
         LuaCode lua;
     };
 
-
     class Function {
+        LuaCode lua;
+    };
+
+    class Command {
+    public:
+        uint8_t priority;
+        bool external;
+        uint8_t sLevel;
         LuaCode lua;
     };
 
@@ -45,15 +63,7 @@ namespace kaizermud::game {
         SL_GOD = 5,
     };
 
-    class Command {
-    public:
-        uint8_t priority;
-        bool external;
-        uint8_t sLevel;
 
-        LuaCode lua;
-
-    };
 
     class ObjectReference;
 
@@ -112,15 +122,7 @@ namespace kaizermud::game {
         uint64_t timestamp_;
     };
 
-    enum TaskState : uint8_t {
-        TS_NEW = 0, // Task is newly created.
-        TS_READY = 1, // Not sure if I'll really use this.
-        TS_RUNNING = 2, // Task is running, duh.
-        TS_WAITING = 3, // Task has voluntarily yielded for some length of time.
-        TS_INTERRUPTED = 4, // Task was interrupted by the runtime for taking too long.
-        TS_FINISHED = 5, // Task is completed and should be purged.
-        TS_ERROR = 6, // Task has errored out and should be purged.
-    };
+
 
     class Task {
     public:
@@ -129,8 +131,23 @@ namespace kaizermud::game {
         uint64_t task_id;
         uint64_t timestamp;
 
+        enum class State : uint8_t {
+            NEW = 0, // Task is newly created.
+            READY = 1, // Not sure if I'll really use this.
+            RUNNING = 2, // Task is running, duh.
+            WAITING = 3, // Task has voluntarily yielded for some length of time.
+            INTERRUPTED = 4, // Task was interrupted by the runtime for taking too long.
+            FINISHED = 5, // Task is completed and should be purged.
+            ERROR = 6, // Task has errored out and should be purged.
+        };
+
+        bool load(const std::string &name, const LuaCode &code);
+
         // Tasks have a state.
-        TaskState state{0};
+        State state{State::NEW};
+
+        // time tracking stuff here...
+        std::chrono::steady_clock::time_point start_time;
 
         // tasks should probably have some kind of Type? I'm not
         // sure yet...
@@ -149,7 +166,12 @@ namespace kaizermud::game {
         // so we'll eat the overhead and see what happens.
         lua_State *L;
 
+        std::string err{};
+
         static void interrupt_check(lua_State* L, int gc);
+        void engageSafety();
+        void disengageSafety();
+        void run();
 
     };
 
@@ -165,7 +187,6 @@ namespace kaizermud::game {
         extern std::set<int64_t> free_ids; // this will store like 100 vector slots that are currently unused to reduce scans.
         extern std::set<uint64_t> pending_connections, disconnected_connections;
         extern std::unordered_map<uint64_t, std::shared_ptr<kaizermud::net::ClientConnection>> connections;
-        extern lua_State* L;
     }
 
 }

@@ -26,6 +26,10 @@ CPMAddPackage("gh:Roblox/luau#0.570")
 
 CPMAddPackage("gh:kunitoki/LuaBridge3#3.0-rc3")
 SET(LUABRIDGE_TESTING OFF)
+SET(LUAU_BUILD_CLI OFF)
+SET(LUAU_BUILD_TESTS OFF)
+SET(LUAU_BUILD_BENCHMARKS OFF)
+
 
 find_package(Boost REQUIRED COMPONENTS system program_options json)
 
@@ -35,13 +39,16 @@ file(GLOB_RECURSE KAIZERMUD_SRC src/*.cpp)
 include_directories(PUBLIC
         include
         ${luau_SOURCE_DIR}/Common/include
+        ${luau_SOURCE_DIR}/VM/include
+        ${luau_SOURCE_DIR}/Compiler/include
         ${Boost_INCLUDE_DIRS}
+        ${LuaBridge_SOURCE_DIR}/Source
 )
 
 add_library(kaizermud ${KAIZERMUD_INCLUDE} ${KAIZERMUD_SRC})
 add_executable(kaizer apps/kaizer.cpp)
 
-target_link_libraries(kaizermud ${Boost_LIBRARIES})
+target_link_libraries(kaizermud ${Boost_LIBRARIES} Luau.VM Luau.Common Luau.Compiler)
 target_link_libraries(kaizer ${Boost_LIBRARIES} kaizermud)
 
 

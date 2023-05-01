@@ -5,11 +5,14 @@
 namespace kaizermud::game {
     using namespace std::chrono_literals;
 
+    lua_CompileOptions compile_options;
+
     namespace state {
         std::vector<std::optional<Object>> objects;
         std::set<int64_t> free_ids;
         std::set<uint64_t> pending_connections, disconnected_connections;
         std::unordered_map<uint64_t, std::shared_ptr<kaizermud::net::ClientConnection>> connections;
+        lua_State* L = luaL_newstate();
     }
 
     void fill_free_ids() {
@@ -138,4 +141,47 @@ namespace kaizermud::game {
 
     }
 
+    LuaCode::LuaCode(const std::string &code) {
+        this->code = code;
+        if(code.empty()) return;
+        compile();
+    }
+
+    void LuaCode::compile() {
+        if(bytecode) return;
+        bytecode = luau_compile(code.c_str(), code.size(), &compile_options, &length);
+    }
+
+    Task::Task() {
+        L = luaL_newstate();
+        auto callbacks = lua_callbacks(L);
+        callbacks->userdata = this;
+        callbacks->interrupt = &Task::interrupt_check;
+    }
+
+    void Task::interrupt_check(lua_State* L, int gc) {
+        if(gc >= 0) {
+            // We don't support GC interrupts since they cannot survive Lua exceptions
+            return;
+        }
+
+        auto callbacks = lua_callbacks(L);
+        auto task = static_cast<Task*>(callbacks->userdata);
+
+        // Do some kind of check here. How much time has passed, maybe?
+        // if we've exceeded the time limit...
+        if(false) {
+            task->state = TS_INTERRUPTED;
+            lua_yield(L, 0);
+        }
+    }
+
+}
+
+kaizermud::game::LuaCode::~LuaCode() {
+    if (bytecode) free(bytecode);
+}
+
+kaizermud::game::Task::~Task() {
+    lua_close(L);
 }

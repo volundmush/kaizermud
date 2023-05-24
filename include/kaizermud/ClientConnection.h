@@ -46,9 +46,24 @@ namespace kaizermud::net {
     };
 
     class ClientConnection {
+        // They need this PURELY for access to that darned spsc_channel.
+        friend class kaizermud::thermite::Link;
+        friend class kaizermud::thermite::LinkManager;
     public:
         ClientConnection(kaizermud::thermite::LinkManager &lm, uint64_t conn_id, spsc_channel<boost::json::value> chan)
-        : lm(lm), conn_id(conn_id), fromLink(std::move(chan)) {}
+        : lm(lm), connID(conn_id), fromLink(std::move(chan)) {}
+        void sendText(const std::string &messg);
+        //void sendMSSP(const std::vector<std::tuple<std::string, std::string>> &data);
+        //void sendGMCP(const std::string &txt);
+        void onWelcome();
+        void onHeartbeat();
+        void onNetworkDisconnected();
+        [[nodiscard]] const ProtocolCapabilities& getCapabilities() const;
+        [[nodiscard]] uint64_t getConnID() const;
+        [[nodiscard]] int64_t getAccountID() const;
+    protected:
+        uint64_t connID;
+        int64_t accountID;
         // Some time structs to handle when we received connections.
         // These probably need some updating on this and Thermite side...
         kaizermud::thermite::LinkManager &lm;
@@ -75,17 +90,9 @@ namespace kaizermud::net {
         // Later we'll need to handle more than just text commands. But this should handle
         std::list<std::string> pending_commands;
 
-        // Some basic methods I need to implement.
-        void sendText(const std::string &messg);
-        void sendLine(const std::string &messg);
-        void sendMSSP(const std::vector<std::tuple<std::string, std::string>> &data);
-        void sendGMCP(const std::string &txt);
-
         spsc_channel<boost::json::value> fromLink;
 
-        void onWelcome();
-        void onHeartbeat();
-        void onNetworkDisconnected();
+
 
     };
 

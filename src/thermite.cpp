@@ -1,5 +1,5 @@
 #include "kaizermud/thermite.h"
-#include "kaizermud/net.h"
+#include "kaizermud/ClientConnection.h"
 #include "kaizermud/game.h"
 #include <iostream>
 #include <utility>

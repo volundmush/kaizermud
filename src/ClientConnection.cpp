@@ -1,4 +1,4 @@
-#include "kaizermud/net.h"
+#include "kaizermud/ClientConnection.h"
 #include <set>
 
 namespace kaizermud::net {
@@ -73,6 +73,18 @@ namespace kaizermud::net {
         jobj["text"] = text;
 
         lm.linkChan.try_send(boost::system::error_code{}, static_cast<boost::json::value>(jobj));
+    }
+
+    const ProtocolCapabilities& ClientConnection::getCapabilities() const {
+        return capabilities;
+    }
+
+    uint64_t ClientConnection::getConnID() const {
+        return connID;
+    }
+
+    int64_t ClientConnection::getAccountID() const {
+        return accountID;
     }
 
 }

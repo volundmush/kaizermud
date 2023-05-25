@@ -9,13 +9,14 @@ namespace kaizermud::game {
     class Stat {
     public:
         explicit Stat(StatHandler* handler);
-        virtual ~Stat();
+        virtual ~Stat() = default;
         virtual void set(double value) = 0;
         virtual void modify(double value) = 0;
-        virtual double get() = 0;
-        virtual double getBase() = 0;
-        virtual std::string getName() const = 0;
-        virtual bool shouldSave() const = 0;
+        [[nodiscard]] virtual double get();
+        [[nodiscard]] virtual double getBase() = 0;
+        [[nodiscard]] virtual std::string getSaveKey() const = 0;
+        [[nodiscard]] virtual std::string getName() const = 0;
+        [[nodiscard]] virtual bool shouldSave() const = 0;
     protected:
         StatHandler* handler;
     };
@@ -24,12 +25,10 @@ namespace kaizermud::game {
     class RealStat : public Stat {
     public:
         using Stat::Stat;
-        ~RealStat() override;
         void set(double value) override;
         void modify(double value) override;
-        double get() override;
-        double getBase() override;
-        bool shouldSave() const override;
+        [[nodiscard]] double getBase() override;
+        [[nodiscard]] bool shouldSave() const override;
     protected:
         double base;
     };
@@ -39,10 +38,9 @@ namespace kaizermud::game {
     class VirtualStat : public Stat {
     public:
         using Stat::Stat;
-        ~VirtualStat() override;
         void set(double value) override;
         void modify(double value) override;
-        bool shouldSave() const override;
+        [[nodiscard]] bool shouldSave() const override;
     };
 
     class StatEntry {
@@ -53,15 +51,15 @@ namespace kaizermud::game {
 
     extern std::unordered_map<std::string, std::unordered_map<std::string, StatEntry>> statRegistry;
 
-    void registerStat(StatEntry entry);
+    OpResult registerStat(StatEntry entry);
 
     class StatHandler {
-        friend class Stat;
     public:
-        explicit StatHandler(Object *obj);
-        void load();
+        explicit StatHandler(const std::shared_ptr<Object>& obj);
+        virtual void load();
+        std::shared_ptr<Object> obj;
     protected:
-        Object *obj;
+        bool loaded;
         std::unordered_map<std::string, std::unique_ptr<Stat>> stats{};
     };
 

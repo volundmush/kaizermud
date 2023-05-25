@@ -21,9 +21,9 @@ set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/bin)
 
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
-#CPMAddPackage("gh:fmtlib/fmt#9.1.0")
+CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 CPMAddPackage("gh:Roblox/luau#0.570")
-
+CPMAddPackage("gh:SRombauts/SQLiteCpp#3.2.1")
 CPMAddPackage("gh:kunitoki/LuaBridge3#3.0-rc3")
 SET(LUABRIDGE_TESTING OFF)
 SET(LUAU_BUILD_CLI OFF)
@@ -32,21 +32,26 @@ SET(LUAU_BUILD_BENCHMARKS OFF)
 
 
 find_package(Boost REQUIRED COMPONENTS system program_options json)
+find_package(SQLite3 REQUIRED)
 
 file(GLOB_RECURSE KAIZERMUD_INCLUDE include/*.h)
 file(GLOB_RECURSE KAIZERMUD_SRC src/*.cpp)
 
-include_directories(PUBLIC
+SET(KAIZERMUD_INCLUDE_DIRS
         include
         ${luau_SOURCE_DIR}/Common/include
         ${luau_SOURCE_DIR}/VM/include
         ${luau_SOURCE_DIR}/Compiler/include
         ${Boost_INCLUDE_DIRS}
         ${LuaBridge_SOURCE_DIR}/Source
+        ${SQLiteCpp_SOURCE_DIR}/include
+        ${FMT_SOURCE_DIR}/include
 )
 
 add_library(kaizermud ${KAIZERMUD_INCLUDE} ${KAIZERMUD_SRC})
+target_include_directories(kaizermud PUBLIC ${KAIZERMUD_INCLUDE_DIRS})
 add_executable(kaizer apps/kaizer.cpp)
+target_include_directories(kaizer PUBLIC ${KAIZERMUD_INCLUDE_DIRS})
 
 target_link_libraries(kaizermud ${Boost_LIBRARIES} Luau.VM Luau.Common Luau.Compiler)
 target_link_libraries(kaizer ${Boost_LIBRARIES} kaizermud)

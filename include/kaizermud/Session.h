@@ -16,6 +16,7 @@ namespace kaizermud::game {
 
         // Send a message to the linked connections.
         virtual void send(const Message &msg);
+        virtual void atObjectDeleted(const std::shared_ptr<Object>& obj);
     protected:
         // The character this Session is linked to.
         std::weak_ptr<Object> character;

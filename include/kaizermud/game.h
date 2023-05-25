@@ -56,6 +56,7 @@ namespace kaizermud::game {
 
     };
 
+    ObjectID getNextAvailableID();
     boost::asio::awaitable<void> process_connections();
     boost::asio::awaitable<void> process_tasks();
     boost::asio::awaitable<void> load();

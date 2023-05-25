@@ -11,44 +11,13 @@ namespace kaizermud::game {
         this->slotType = utils::intern(slotType);
     }
 
-    void EquipSlot::setWearVerb(const std::string &verb) {
-        wearVerb = utils::intern(verb);
+    void EquipSlot::equip(const std::shared_ptr<Object> object) {
+        item = object;
+        object->equi
     }
 
-    std::string_view EquipSlot::getWearVerb() const {
-        return wearVerb.value_or("wear");
-    }
-
-    void EquipSlot::setWearDisplay(const std::string &display) {
-        wearDisplay = utils::intern(display);
-    }
-
-    std::string_view EquipSlot::getWearDisplay() const {
-        return wearDisplay.value_or("You wear $item.");
-    }
-
-    void EquipSlot::setRemoveVerb(const std::string &verb) {
-        removeVerb = utils::intern(verb);
-    }
-
-    std::string_view EquipSlot::getRemoveVerb() const {
-        return removeVerb.value_or("remove");
-    }
-
-    void EquipSlot::setRemoveDisplay(const std::string &display) {
-        removeDisplay = utils::intern(display);
-    }
-
-    std::string_view EquipSlot::getRemoveDisplay() const {
-        return removeDisplay.value_or("You remove $item.");
-    }
-
-    void EquipSlot::setListDisplay(const std::string &display) {
-        listDisplay = utils::intern(display);
-    }
-
-    std::string_view EquipSlot::getListDisplay() const {
-        return listDisplay.value_or("You are wearing $item.");
+    void EquipSlot::setPropertyVerb(const std::string &name, std::string_view value) {
+        properties[name] = utils::intern(value);
     }
 
     std::string_view EquipSlot::getSlot() const {
@@ -71,7 +40,7 @@ namespace kaizermud::game {
         return true;
     }
 
-    OpResult EquipSlot::canEquip(Object *object) const {
+    OpResult EquipSlot::canEquip(const std::shared_ptr<Object> object) const {
         if(item.has_value()) {
             return {false, "You are already wearing something in that slot."};
         }
@@ -81,32 +50,36 @@ namespace kaizermud::game {
     // EquipEntry
     std::unordered_map<std::string, std::unordered_map<std::string, EquipEntry>> equipRegistry;
 
-    void registerEquip(EquipEntry entry) {
+    OpResult registerEquip(EquipEntry entry) {
         if(entry.objType.empty()) {
-            throw std::runtime_error("EquipEntry objType cannot be empty");
+            return {false, "EquipEntry objType cannot be empty"};
         }
         if(entry.slot.empty()) {
-            throw std::runtime_error("EquipEntry slot cannot be empty");
+            return {false, "EquipEntry slot cannot be empty"};
         }
         if(entry.slotType.empty()) {
-            throw std::runtime_error("EquipEntry slotType cannot be empty");
+            return {false, "EquipEntry slotType cannot be empty"};
         }
         if(entry.ctor == nullptr) {
-            throw std::runtime_error("EquipEntry ctor cannot be null");
+            return {false, "EquipEntry ctor cannot be null"};
         }
         auto &reg = equipRegistry[entry.objType];
         if(reg.find(entry.slot) != reg.end()) {
-            throw std::runtime_error("EquipEntry already registered");
+            return {false, "EquipEntry already registered"};
         }
         reg[entry.slot] = entry;
+        return {true, std::nullopt};
     }
 
     // EquipHandler
-    EquipHandler::EquipHandler(Object *object) {
-        this->obj = object;
+    EquipHandler::EquipHandler(const std::shared_ptr<Object>& obj) : obj(obj) {
+
     }
 
     void EquipHandler::load() {
+        if(loaded) return;
+        loaded = true;
+
         std::unordered_map<std::string, EquipEntry> toLoad;
 
         for(const auto &objType : obj->getTypes()) {

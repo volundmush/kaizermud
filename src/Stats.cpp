@@ -5,8 +5,12 @@ namespace kaizermud::game {
 
     std::unordered_map<std::string, std::unordered_map<std::string, StatEntry>> statRegistry{};
 
-    Stat::Stat(kaizermud::game::StatHandler *handler) {
+    Stat::Stat(StatHandler *handler) {
         this->handler = handler;
+    }
+
+    double Stat::get() {
+        return getBase();
     }
 
     // RealStats
@@ -26,7 +30,6 @@ namespace kaizermud::game {
         return true;
     }
 
-
     // VirtualStats
     void VirtualStat::set(double value) {
         // does nothing!
@@ -36,33 +39,41 @@ namespace kaizermud::game {
         // does nothing!
     }
 
-    void registerStat(StatEntry entry) {
+    bool VirtualStat::shouldSave() const {
+        return false;
+    }
+
+    OpResult registerStat(StatEntry entry) {
         if(entry.object_type.empty()) {
-            throw std::runtime_error("StatEntry object_type cannot be empty");
+            return {false, "StatEntry object_type cannot be empty"};
         }
         if(entry.name.empty()) {
-            throw std::runtime_error("StatEntry name cannot be empty");
+            return {false, "StatEntry name cannot be empty"};
         }
 
         if(entry.ctor == nullptr) {
-            throw std::runtime_error("StatEntry ctor cannot be null");
+            return {false, "StatEntry ctor cannot be null"};
         }
 
         auto &reg = statRegistry[entry.object_type];
+
         if(reg.find(entry.name) != reg.end()) {
-            throw std::runtime_error("StatEntry already registered");
+            return {false, "StatEntry already registered"};
         }
 
-
         reg[entry.name] = entry;
+        return {true, std::nullopt};
     }
 
     // StatHandler functions
-    StatHandler::StatHandler(kaizermud::game::Object *obj) {
-        this->obj = obj;
+    StatHandler::StatHandler(const std::shared_ptr<Object>& obj) : obj(obj) {
+
     }
 
     void StatHandler::load() {
+        if(loaded) return;
+        loaded = true;
+
         // This function could potentially be optimized.
         // Each unique sequence of getTypes() should have the same
         // stats to load, so we could cache the results of this function.

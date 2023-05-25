@@ -25,7 +25,7 @@ namespace kaizermud::game {
     void Aspect::onLoad() {
     }
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, AspectEntry>>> aspectRegistry;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, AspectEntry>>> aspectRegistry;
 
     OpResult registerAspect(AspectEntry entry) {
         if(entry.objType.empty()) {
@@ -86,7 +86,7 @@ namespace kaizermud::game {
         return {true, std::nullopt};
     }
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, AspectSlotEntry>> aspectSlotRegistry;
+    std::unordered_map<std::string, std::unordered_map<std::string, AspectSlotEntry>> aspectSlotRegistry;
 
     OpResult registerAspectSlot(AspectSlotEntry entry) {
         if(entry.objType.empty()) {
@@ -104,6 +104,32 @@ namespace kaizermud::game {
     }
 
     // AspectHandler
-    AspectHandler::AspectHandler(Object *obj) : obj(obj) {
+    AspectHandler::AspectHandler(const std::shared_ptr<Object>& obj) : obj(obj) {
+    }
+
+    void AspectHandler::load() {
+        if(loaded) {
+            return;
+        }
+        loaded = true;
+
+        std::unordered_map<std::string, AspectSlotEntry> aspectSlotsToLoad;
+
+        for(const auto& type : obj->getTypes()) {
+            auto objreg = aspectSlotRegistry.find(std::string(type));
+            if(objreg == aspectSlotRegistry.end()) {
+                continue;
+            }
+            auto slotreg = objreg->second;
+            for(const auto& [name, entry] : slotreg) {
+                aspectSlotsToLoad[name] = entry;
+            }
+        }
+
+        for(const auto &[name, entry] : aspectSlotsToLoad) {
+
+            slots[name] = entry.ctor(this);
+        }
+
     }
 }

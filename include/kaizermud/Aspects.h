@@ -27,8 +27,7 @@ namespace kaizermud::game {
         std::function<std::unique_ptr<Aspect>(AspectSlot*)> ctor;
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string,
-        std::unordered_map<std::string, AspectEntry>>> aspectRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, AspectEntry>>> aspectRegistry;
 
     OpResult registerAspect(AspectEntry entry);
 
@@ -54,10 +53,12 @@ namespace kaizermud::game {
 
     class AspectHandler {
     public:
-        explicit AspectHandler(Object *obj);
-        Object *obj;
+        explicit AspectHandler(const std::shared_ptr<Object>& obj);
+        std::shared_ptr<Object> obj;
         std::unordered_map<std::string, std::unique_ptr<AspectSlot>> slots;
-        void load();
+        virtual void load();
+    protected:
+        bool loaded;
     };
 
 }

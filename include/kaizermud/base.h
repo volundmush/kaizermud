@@ -26,6 +26,6 @@ namespace kaizermud {
     }
 
     using ObjectID = uint64_t;
-    using OpResult = std::pair<bool, std::optional<std::string_view>>;
+    using OpResult = std::pair<bool, std::optional<std::string>>;
 
 }

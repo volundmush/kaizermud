@@ -16,35 +16,23 @@ namespace kaizermud::game {
         std::string_view getSlot() const;
         std::string_view getSlotType() const;
 
-        virtual void equip(Object* object) = 0;
+        virtual void equip(const std::shared_ptr<Object> object);
 
         virtual bool isAvailable() const;
 
-        virtual OpResult canEquip(Object* object) const;
+        virtual OpResult canEquip(const std::shared_ptr<Object> object) const;
 
-        virtual void setWearVerb(const std::string& verb);
-        virtual std::string_view getWearVerb() const;
-
-        virtual void setWearDisplay(const std::string& display);
-        virtual std::string_view getWearDisplay() const;
-
-        virtual void setRemoveVerb(const std::string& verb);
-        virtual std::string_view getRemoveVerb() const;
-
-        virtual void setRemoveDisplay(const std::string& display);
-        virtual std::string_view getRemoveDisplay() const;
-
-        virtual void setListDisplay(const std::string& display);
-        virtual std::string_view getListDisplay() const;
+        virtual void setProperty(const std::string& name, std::string_view value);
+        [[nodiscard]] virtual std::string_view getProperty() const;
 
         void setSortOrder(int order);
         int getSortOrder() const;
 
     protected:
         EquipHandler* handler;
-        std::optional<ObjectID> item;
+        std::shared_ptr<Object> item;
         std::string_view slot, slotType;
-        std::optional<std::string_view> wearVerb, wearDisplay, removeVerb, removeDisplay, listDisplay;
+        std::unordered_map<std::string, std::string_view> properties;
         int sortOrder{0};
     };
 
@@ -56,14 +44,16 @@ namespace kaizermud::game {
     };
 
     extern std::unordered_map<std::string, std::unordered_map<std::string, EquipEntry>> equipRegistry;
-    void registerEquip(EquipEntry entry);
+    OpResult registerEquip(EquipEntry entry);
 
     class EquipHandler {
     public:
-        explicit EquipHandler(Object *obj);
-        Object *obj;
+        explicit EquipHandler(const std::shared_ptr<Object>& obj);
+        std::shared_ptr<Object> obj;
         std::unordered_map<std::string, std::unique_ptr<EquipSlot>> slots;
-        void load();
+        virtual void load();
+    protected:
+        bool loaded;
     };
 
 }

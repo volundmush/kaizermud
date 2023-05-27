@@ -6,7 +6,7 @@
 
 namespace kaizermud::game {
     struct Message {
-        std::string_view msgType;
+        std::string msgType;
         boost::json::array args;
         boost::json::object kwargs;
         boost::json::object options;

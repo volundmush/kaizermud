@@ -8,9 +8,9 @@ namespace kaizermud::components {
 
     struct ObjectInfo {
         ObjectID id;
-        std::pair<std::string_view, std::string_view> types;
-        [[nodiscard]] std::string_view getMainType() const { return types.first; }
-        [[nodiscard]] std::string_view getSubType() const { return types.second; }
+        std::pair<std::string, std::string> types;
+        [[nodiscard]] std::string getMainType() const { return types.first; }
+        [[nodiscard]] std::string getSubType() const { return types.second; }
     };
 
     struct Aspects {
@@ -22,7 +22,7 @@ namespace kaizermud::components {
     };
 
     struct Strings {
-        std::unordered_map<std::string, std::string_view> data;
+        std::unordered_map<std::string, std::string> data;
     };
 
     struct Integers {

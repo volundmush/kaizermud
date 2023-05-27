@@ -1,6 +1,5 @@
 #pragma once
 #include "kaizermud/base.h"
-#include <string_view>
 #include <unordered_set>
 
 constexpr unsigned int string_hash(const char *str, int h = 0) {
@@ -13,10 +12,5 @@ constexpr unsigned int operator"" _hash(const char *str, size_t) {
 
 namespace kaizermud::utils {
 
-
-    extern std::unordered_set<std::string> stringPool;
-
-    std::string_view intern(const std::string& str);
-    std::string_view intern(const std::string_view str);
 
 }

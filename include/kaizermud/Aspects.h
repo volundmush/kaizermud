@@ -22,7 +22,7 @@ namespace kaizermud::game {
     class AspectSlot : public CallParameters {
     public:
         std::string objType, slotType;
-        [[nodiscard]] virtual OpResult<> setAspect(entt::entity ent, const std::string& saveKey, bool isLoading);
+        [[nodiscard]] virtual OpResult<> setAspect(entt::entity ent, const std::string& saveKey, bool isLoading = false);
         [[nodiscard]] virtual OpResult<> atPostLoad(entt::entity ent);
     };
 
@@ -30,9 +30,9 @@ namespace kaizermud::game {
 
     OpResult<> registerAspectSlot(std::shared_ptr<AspectSlot> entry);
 
-    extern std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
+    extern std::vector<std::pair<std::pair<std::string, std::string>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
 
-    std::unordered_map<std::string, std::shared_ptr<AspectSlot>> getAspectSlots(const std::pair<std::string, std::string>& objType);
+    std::unordered_map<std::string, std::shared_ptr<AspectSlot>>& getAspectSlots(const std::pair<std::string, std::string>& objType);
 
 
 }

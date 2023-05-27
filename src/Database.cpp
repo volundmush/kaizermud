@@ -54,7 +54,7 @@ namespace kaizermud::db {
 
     };
 
-    void runQuery(const std::shared_ptr<SQLite::Database>& db, std::string_view query) {
+    void runQuery(const std::shared_ptr<SQLite::Database>& db, const std::string& query) {
         try {
             db->exec(query.data());
         }
@@ -71,7 +71,7 @@ namespace kaizermud::db {
         }
     }
 
-    void loadDatabase(std::string_view path) {
+    void loadDatabase(const std::string& path) {
         auto loadDb = std::make_shared<SQLite::Database>(path.data(), SQLite::OPEN_READONLY);
 
         for (const auto& func: preLoadFuncs) {
@@ -98,7 +98,7 @@ namespace kaizermud::db {
         }
     }
 
-    void saveDatabase(std::string_view path) {
+    void saveDatabase(const std::string& path) {
         auto saveDb = std::make_shared<SQLite::Database>(path.data(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
 
         SQLite::Transaction transaction(*saveDb);

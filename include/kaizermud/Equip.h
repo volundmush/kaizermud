@@ -1,7 +1,7 @@
 #pragma once
 #include "kaizermud/base.h"
 #include <optional>
-#include <string_view>
+
 #include "SQLiteCpp/SQLiteCpp.h"
 
 

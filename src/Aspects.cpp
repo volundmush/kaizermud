@@ -78,7 +78,7 @@ namespace kaizermud::game {
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>> aspectSlotRegistry;
 
-    std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
+    std::vector<std::pair<std::pair<std::string, std::string>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
 
     OpResult<> registerAspectSlot(std::shared_ptr<AspectSlot> entry) {
         if(entry->objType.empty()) {
@@ -92,7 +92,7 @@ namespace kaizermud::game {
         return {true, std::nullopt};
     }
 
-    std::unordered_map<std::string, std::shared_ptr<AspectSlot>>& getAspectSlots(const std::pair<std::string_view, std::string_view>& objType) {
+    std::unordered_map<std::string, std::shared_ptr<AspectSlot>>& getAspectSlots(const std::pair<std::string, std::string>& objType) {
         auto found = std::find_if(aspectSlotsCache.begin(), aspectSlotsCache.end(), [objType](auto &x) {return x.first == objType;});
         if(found != aspectSlotsCache.end()) {
             return found->second;

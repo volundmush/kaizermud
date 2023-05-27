@@ -16,14 +16,14 @@ namespace kaizermud::game {
 
 
     ObjectID getNextAvailableID() {
-        while(!objects.count(state::lastInsertID)) {
+        while(objects.count(state::lastInsertID)) {
             state::lastInsertID++;
         }
         return state::lastInsertID;
     }
 
 
-    boost::asio::awaitable<void> process_connections() {
+    boost::asio::awaitable<void> process_connections(const boost::asio::steady_timer::duration& deltaTime) {
         // First, handle any disconnected connections.
         for (const auto &id : state::disconnected_connections) {
             auto it = state::connections.find(id);
@@ -48,19 +48,19 @@ namespace kaizermud::game {
 
         // Next, we must handle the heartbeat routine for each connection.
         for(auto& [id, conn] : state::connections) {
-            conn->onHeartbeat();
+            conn->onHeartbeat(deltaTime);
         }
 
         co_return;
     }
 
-    boost::asio::awaitable<void> process_tasks() {
+    boost::asio::awaitable<void> process_tasks(const boost::asio::steady_timer::duration& deltaTime) {
         co_return;
     }
 
-    boost::asio::awaitable<void> heartbeat() {
-        co_await process_connections();
-        co_await process_tasks();
+    boost::asio::awaitable<void> heartbeat(const boost::asio::steady_timer::duration& deltaTime) {
+        co_await process_connections(deltaTime);
+        co_await process_tasks(deltaTime);
 
         co_return;
     }
@@ -72,15 +72,17 @@ namespace kaizermud::game {
     boost::asio::awaitable<void> run() {
         co_await load();
 
+        auto previousTime = boost::asio::steady_timer::clock_type::now();
         boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor, 100ms);
 
         while(true) {
             co_await timer.async_wait(boost::asio::use_awaitable);
-            co_await heartbeat();
+            auto currentTime = boost::asio::steady_timer::clock_type::now();
+            auto deltaTime = currentTime - previousTime;
+            previousTime = currentTime;
+            co_await heartbeat(deltaTime);
         }
-
         co_return;
-
     }
 
     void LuaCode::compile() {

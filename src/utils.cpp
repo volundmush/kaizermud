@@ -7,4 +7,9 @@ namespace kaizermud::utils {
         auto pair = stringPool.insert(str);
         return std::string_view(*pair.first);
     }
+
+    std::string_view intern(std::string_view str) {
+        return intern(std::string(str));
+    }
+
 }

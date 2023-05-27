@@ -2,61 +2,56 @@
 
 #include <optional>
 #include "kaizermud/base.h"
+#include "SQLiteCpp/SQLiteCpp.h"
+#include "kaizermud/CallParameters.h"
 
 namespace kaizermud::game {
     class AspectHandler;
 
     class AspectSlot;
+    class AspectEntry;
 
     class Aspect {
     public:
-        Aspect(AspectSlot *slot);
-        virtual ~Aspect() = default;
-        AspectSlot *slot;
-        Object* obj();
-        std::string_view getSlotType();
-        virtual std::string_view getSaveKey() const = 0;
-        virtual std::string_view getName() const = 0;
-        virtual void onRemove();
-        virtual void onAdd();
-        virtual void onLoad();
+        std::string objType, slotType, saveKey, name;
+        virtual void onRemove(AspectHandler *handler);
+        virtual void onAdd(AspectHandler *handler);
+        virtual void onLoad(AspectHandler *handler);
     };
 
-    struct AspectEntry {
-        std::string objType, slotType, saveKey;
+    class AspectEntry : public CallParameters {
+    public:
+        std::string objType, slotType, saveKey, name;
         std::function<std::unique_ptr<Aspect>(AspectSlot*)> ctor;
+        std::unordered_map<std::string, std::function<CallParameters(const CallParameters&, const AspectEntry&)>> funcs;
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, AspectEntry>>> aspectRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Aspect>>>> aspectRegistry;
 
     OpResult registerAspect(AspectEntry entry);
 
-    class AspectSlot {
+    class AspectSlotEntry;
+
+    class AspectSlot : public CallParameters {
     public:
-        AspectSlot(AspectHandler *handler, const std::string& slotType);
-        virtual ~AspectSlot() = default;
-        AspectHandler *handler;
-        Object *obj();
-        std::unique_ptr<Aspect> aspect;
-        std::string_view slotType;
-        [[nodiscard]] virtual OpResult setAspect(const std::string& saveKey, bool isLoading);
-    };
-
-    struct AspectSlotEntry {
         std::string objType, slotType;
-        std::function<std::unique_ptr<AspectSlot>(AspectHandler*)> ctor;
+        [[nodiscard]] virtual OpResult setAspect(AspectHandler *handler, const std::string& saveKey, bool isLoading);
+        [[nodiscard]] virtual OpResult atPostLoad(AspectHandler *handler);
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, AspectSlotEntry>> aspectSlotRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>> aspectSlotRegistry;
 
-    OpResult registerAspectSlot(AspectSlotEntry entry);
+    OpResult registerAspectSlot(std::shared_ptr<AspectSlot> entry);
 
     class AspectHandler {
     public:
         explicit AspectHandler(const std::shared_ptr<Object>& obj);
         std::shared_ptr<Object> obj;
-        std::unordered_map<std::string, std::unique_ptr<AspectSlot>> slots;
+        std::unordered_map<std::string, std::shared_ptr<AspectSlot>> slots;
+        std::unordered_map<std::string, std::shared_ptr<Aspect>> aspects;
         virtual void load();
+        virtual void loadFromDB(const std::shared_ptr<SQLite::Database> &db);
+        virtual void saveToDB(const std::shared_ptr<SQLite::Database> &db);
     protected:
         bool loaded;
     };

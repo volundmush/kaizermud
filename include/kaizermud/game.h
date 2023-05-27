@@ -57,10 +57,10 @@ namespace kaizermud::game {
     };
 
     ObjectID getNextAvailableID();
-    boost::asio::awaitable<void> process_connections();
-    boost::asio::awaitable<void> process_tasks();
+    boost::asio::awaitable<void> process_connections(const boost::asio::steady_timer::duration& deltaTime);
+    boost::asio::awaitable<void> process_tasks(const boost::asio::steady_timer::duration& deltaTime);
     boost::asio::awaitable<void> load();
-    boost::asio::awaitable<void> heartbeat();
+    boost::asio::awaitable<void> heartbeat(const boost::asio::steady_timer::duration& deltaTime);
     boost::asio::awaitable<void> run();
 
 

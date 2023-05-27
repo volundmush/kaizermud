@@ -4,9 +4,11 @@
 #include "kaizermud/utils.h"
 #include "kaizermud/Session.h"
 #include "kaizermud/game.h"
+#include "kaizermud/Database.h"
 #include "fmt/format.h"
 
 namespace kaizermud::game {
+
 
     Object::Object(ObjectID id) {
         this->id = id;
@@ -71,12 +73,15 @@ namespace kaizermud::game {
     }
 
     void Object::atDelete() {
+        auto self = shared_from_this();
         if(session) {
-            session->atObjectDeleted(shared_from_this());
+            session->atObjectDeleted(self);
         }
-        if(location) {
-            location->atObjectLeave(shared_from_this(), nullptr, "delete");
-            location->removeFromContents(shared_from_this());
+        auto loc = getRelation("location");
+        if(loc) {
+            auto param = CallParameters().setString("movetype", "delete").setBool("quiet", true);
+            loc->atObjectLeave(param);
+            clearRelation("location");
         }
     }
 
@@ -92,23 +97,85 @@ namespace kaizermud::game {
 
     }
 
-    // Info API Hooks
-    bool Object::isSuperuser() {
-        return false;
-        // TODO: Hook this up to Sessions.
+    void Object::loadFromDB(const std::shared_ptr<SQLite::Database> &db) {
+        // By this point we have already been instantiated with our ID so...
+
+        // Load our strings
+        SQLite::Statement q1(*db, "SELECT key, value FROM objectStrings WHERE objectId = ?;");
+        q1.bind(1, getId());
+
+        while(q1.executeStep()) {
+            auto key = q1.getColumn(0).getString();
+            auto val = q1.getColumn(1).getString();
+            strings[key] = utils::intern(val);
+        }
+
+        // Load our relations
+        SQLite::Statement q2(*db, "SELECT relationType, relationId FROM objectRelations WHERE objectId = ?;");
+        q2.bind(1, getId());
+
+        while(q2.executeStep()) {
+            auto type = q2.getColumn(0).getString();
+            auto relID = q2.getColumn(1).getInt64();
+
+            auto it = objects.find(relID);
+            if(it == objects.end()) {
+                continue;
+            }
+            setRelation(type, it->second);
+        }
+
+        // Load our stats
+        statHandler->loadFromDB(db);
+        equipHandler->loadFromDB(db);
+        aspectHandler->loadFromDB(db);
+
     }
 
+    void Object::saveToDB(const std::shared_ptr<SQLite::Database> &db) {
+        SQLite::Statement q1(*db, "INSERT INTO objects (id, mainType, subType) VALUES (?, ?, ?);");
+
+        q1.bind(1, getId());
+        q1.bind(2, std::string(getMainType()));
+        q1.bind(3, std::string(getSubType()));
+        q1.exec();
+
+        SQLite::Statement q2(*db, "INSERT INTO objectStrings (objectId, key, value) VALUES (?, ?, ?);");
+        for(auto &it : strings) {
+            q2.bind(1, getId());
+            q2.bind(2, it.first);
+            q2.bind(3, std::string(it.second));
+            q2.exec();
+            q2.reset();
+        }
+
+        SQLite::Statement q3(*db, "INSERT INTO objectRelations (objectId, relationType, relationId) VALUES (?, ?, ?);");
+        for(auto &it : relations) {
+            q3.bind(1, getId());
+            q3.bind(2, it.first);
+            q3.bind(3, it.second->getId());
+            q3.exec();
+            q3.reset();
+        }
+
+        statHandler->saveToDB(db);
+        aspectHandler->saveToDB(db);
+        equipHandler->saveToDB(db);
+
+    }
+
+    // Info API Hooks
     std::string Object::getDisplayName(std::shared_ptr<Object> &looker, std::string_view type) {
-        auto sh = getString("short_description");
-        if(!sh.empty()) return std::string(sh);
+        auto short_description = getString("short_description");
+        if(short_description.has_value() && !short_description.value().empty()) return std::string(short_description.value());
         auto name = getString("name");
-        if(!sh.empty()) return std::string(name);
+        if(name.has_value() && !name.value().empty()) return std::string(name.value());
         return fmt::format("Unnamed Object {}", id);
     }
 
     std::string Object::renderAppearance(std::shared_ptr<Object> &looker, std::string_view type) {
-        auto look = getString("look_description");
-        if(!look.empty()) return std::string(look);
+        auto look_description = getString("look_description");
+        if(look_description.has_value() && !look_description.value().empty()) return std::string(look_description.value());
         return "You see nothing particularly special...";
     }
 
@@ -126,161 +193,44 @@ namespace kaizermud::game {
 
     }
 
+
     // Inventory API Hooks
+    void Object::atEquipItem(const std::shared_ptr<Object> &item, std::string_view slot) {
+
+    }
+
+    void Object::atEquipped(const std::shared_ptr<Object> &user, std::string_view slot) {
+        setString("equippedAt", slot);
+    }
+
+    void Object::atRemoveItem(const std::shared_ptr<Object> &item, std::string_view slot) {
+
+    }
+
+    void Object::atUnequip(const std::shared_ptr<Object> &user, std::string_view slot) {
+        clearString("equippedAt");
+    }
+
     bool Object::matchType(std::string_view type) const {
         auto types = getTypes();
         return std::find(types.begin(), types.end(), type) != types.end();
     }
 
     std::vector<std::shared_ptr<Object>> Object::getContents() {
-        std::vector<std::shared_ptr<Object>> out;
-        std::copy(contents.begin(), contents.end(), std::back_inserter(out));
-        return out;
+        auto contents = getReverseRelation("location");
+        if(!contents.has_value()) return {};
+        return contents.value().get();
     }
 
     std::vector<std::shared_ptr<Object>> Object::getContents(std::string_view type) {
         std::vector<std::shared_ptr<Object>> out;
-        std::copy_if(contents.begin(), contents.end(), std::back_inserter(out), [type](const auto& obj) {
+        auto contents = getReverseRelation("location");
+        if(!contents.has_value()) return out;
+        std::copy_if(contents.value().get().begin(), contents.value().get().end(), std::back_inserter(out), [type](const auto& obj) {
             return obj->matchType(type);
         });
         return out;
     }
-
-    // Get
-    OpResult Object::doGet(const std::shared_ptr<Object> &target) {
-        auto [canGet, reas] = canGetObject(target);
-        if(!canGet) {
-            return {false, reas};
-        }
-
-        auto self = shared_from_this();
-        auto [preGet, reason] = target->atPreGet(self);
-        if(!preGet) {
-            return {false, reason};
-        }
-
-        auto [moved, whynot] = target->moveTo(self, true, "get");
-        if(!moved) {
-            return {false, whynot};
-        }
-
-        target->atGet(self);
-    }
-
-    OpResult Object::canGetObject(const std::shared_ptr<Object> &target) {
-        return {true, std::nullopt};
-    }
-
-    OpResult Object::atPreGet(const std::shared_ptr<Object> &getter) {
-        return {true, std::nullopt};
-    }
-
-    void Object::atGet(const std::shared_ptr<Object> &getter) {
-
-    }
-
-    // Drop
-
-    OpResult Object::doDrop(const std::shared_ptr<Object> &target) {
-        auto [canDrop, reas] = canDropObject(target);
-        if(!canDrop) {
-            return {false, reas};
-        }
-
-        auto self = shared_from_this();
-        auto [preDrop, reason] = target->atPreDrop(self);
-        if(!preDrop) {
-            return {false, reason};
-        }
-
-        auto [moved, whynot] = target->moveTo(location, true, "drop");
-        if(!moved) {
-            return {false, whynot};
-        }
-
-        target->atDrop(self);
-    }
-
-    OpResult Object::canDropObject(const std::shared_ptr<Object> &target) {
-        return {true, std::nullopt};
-    }
-
-    OpResult Object::atPreDrop(const std::shared_ptr<Object> &dropper) {
-        return {true, std::nullopt};
-    }
-
-    void Object::atDrop(const std::shared_ptr<Object> &dropper) {
-
-    }
-
-    // Give
-    OpResult Object::doGive(const std::shared_ptr<Object> &target, const std::shared_ptr<Object> &recipient) {
-        auto [canGive, reas] = canGiveObject(target, recipient);
-        if(!canGive) {
-            return {false, reas};
-        }
-
-        auto self = shared_from_this();
-        auto [preGive, reason] = target->atPreGive(self, recipient);
-        if(!preGive) {
-            return {false, reason};
-        }
-
-        auto [moved, whynot] = target->moveTo(recipient, true, "give");
-        if(!moved) {
-            return {false, whynot};
-        }
-
-        target->atGive(self, recipient);
-    }
-
-    OpResult Object::canGiveObject(const std::shared_ptr<Object> &target, const std::shared_ptr<Object> &recipient) {
-        return {true, std::nullopt};
-    }
-
-    OpResult Object::atPreGive(const std::shared_ptr<Object> &giver, const std::shared_ptr<Object> &recipient) {
-        return {true, std::nullopt};
-    }
-
-    void Object::atGive(const std::shared_ptr<Object> &giver, const std::shared_ptr<Object> &recipient) {
-
-    }
-
-    // Put
-
-OpResult Object::doPut(const std::shared_ptr<Object> &target, const std::shared_ptr<Object> &container) {
-        auto [canPut, reas] = canPutObject(target, container);
-        if(!canPut) {
-            return {false, reas};
-        }
-
-        auto self = shared_from_this();
-        auto [prePut, reason] = target->atPrePut(self, container);
-        if(!prePut) {
-            return {false, reason};
-        }
-
-        auto [moved, whynot] = target->moveTo(container, true, "put");
-        if(!moved) {
-            return {false, whynot};
-        }
-
-        target->atPut(self, container);
-    }
-
-    OpResult Object::canPutObject(const std::shared_ptr<Object> &target, const std::shared_ptr<Object> &container) {
-        return {true, std::nullopt};
-    }
-
-    OpResult Object::atPrePut(const std::shared_ptr<Object> &putter, const std::shared_ptr<Object> &container) {
-        return {true, std::nullopt};
-    }
-
-    void Object::atPut(const std::shared_ptr<Object> &putter, const std::shared_ptr<Object> &container) {
-
-    }
-
-
 
 
     // Interaction and Filtering
@@ -297,30 +247,27 @@ OpResult Object::doPut(const std::shared_ptr<Object> &target, const std::shared_
     }
 
     // Movement API Hooks
-    OpResult Object::moveTo(kaizermud::ObjectID dest, bool quiet, std::string_view moveType) {
-        auto it = objects.find(dest);
-        if(it == objects.end()) {
-            return {false, "Destination not found"};
-        }
-        return moveTo(it->second, quiet, moveType);
-    }
-
-    OpResult Object::moveTo(const std::shared_ptr<Object> &dest, bool quiet, std::string_view moveType) {
-
-        auto [canMove, reason] = atPreMove(dest, moveType);
-        if(!canMove) {
-            return {false, reason};
-        }
+    OpResult Object::moveTo(CallParameters& param) {
 
         auto self = shared_from_this();
+        auto loc = getRelation("location");
+        if(loc) param.setObject("origin", loc);
+        param.setObject("mover", self);
 
-        auto loc = location;
+        auto [canMove, reas] = atPreMove(param);
+        if(!canMove) {
+            return {false, reas};
+        }
+
+
         if(loc) {
-            auto [canLeave, reason] = loc->atPreObjectLeave(self, dest, moveType);
+            auto [canLeave, reason] = loc->atPreObjectLeave(param);
             if(!canLeave) {
                 return {false, reason};
             }
         }
+
+        auto dest = param.getObject("destination");
 
         if(dest) {
             if (dest->id == id) {
@@ -328,7 +275,7 @@ OpResult Object::doPut(const std::shared_ptr<Object> &target, const std::shared_
             }
             auto d = dest;
             while(true) {
-                auto l = d->location;
+                auto l = d->getRelation("location");
                 if(!l) break;
                 if(l->id == id) {
                     return {false, "That would cause circular references! The universe might implode!"};
@@ -337,101 +284,149 @@ OpResult Object::doPut(const std::shared_ptr<Object> &target, const std::shared_
             }
 
 
-            auto [canEnter, reason] = dest->atPreObjectReceive(self, loc, moveType);
+            auto [canEnter, reason] = dest->atPreObjectReceive(param);
             if(!canEnter) {
                 return {false, reason};
             }
         }
 
+        auto quiet = param.getBool("quiet");
+
         if(loc) {
-            loc->atObjectLeave(self, dest, moveType);
-            if(!quiet) announceMoveFrom(loc, dest, moveType);
-            loc->removeFromContents(self);
+            loc->atObjectLeave(param);
+            if(!quiet) announceMoveFrom(param);
+            clearRelation("location");
         }
 
         if(dest) {
-            dest->atObjectReceive(self, loc, moveType);
-            if(!quiet) announceMoveTo(loc, dest, moveType);
-            dest->addToContents(self);
+            setRelation("location", dest);
+            dest->atObjectReceive(param);
+            if(!quiet) announceMoveTo(param);
         }
 
-        atPostMove(loc, moveType);
+        atPostMove(param);
         return {true, std::nullopt};
     }
 
-    OpResult Object::atPreMove(const std::shared_ptr<Object> &dest, std::string_view moveType) {
+    OpResult Object::atPreMove(const CallParameters& param) {
         return {true, std::nullopt};
     }
 
-    OpResult Object::atPreObjectLeave(const std::shared_ptr<Object> &obj, const std::shared_ptr<Object> &dest,
-                                      std::string_view moveType) {
+    OpResult Object::atPreObjectLeave(const CallParameters& param) {
         return {true, std::nullopt};
     }
 
-    OpResult Object::atPreObjectReceive(const std::shared_ptr<Object>& obj, const std::shared_ptr<Object>& source, std::string_view moveType) {
+    OpResult Object::atPreObjectReceive(const CallParameters& param) {
         return {true, std::nullopt};
     }
 
-    void Object::atObjectLeave(const std::shared_ptr<Object> &obj, const std::shared_ptr<Object> &dest,
-                                   std::string_view moveType) {
+    void Object::atObjectLeave(const CallParameters& param) {
 
     }
 
-    void Object::announceMoveFrom(const std::shared_ptr<Object> &source, const std::shared_ptr<Object> &dest,
-                                  std::string_view moveType) {
+    void Object::announceMoveFrom(const CallParameters& param) {
 
     }
 
-    void Object::announceMoveTo(const std::shared_ptr<Object> &source, const std::shared_ptr<Object> &dest,
-                                std::string_view moveType) {
+    void Object::announceMoveTo(const CallParameters& param) {
 
     }
 
-    void Object::atObjectReceive(const std::shared_ptr<Object>& obj, const std::shared_ptr<Object>& source, std::string_view moveType) {
+    void Object::atObjectReceive(const CallParameters& param) {
 
     }
 
-    void Object::atPostMove(const std::shared_ptr<Object> &loc, std::string_view moveType) {
-    }
-
-    const std::shared_ptr<Object>& Object::getLocation() const {
-        return location;
-    }
-
-    const std::shared_ptr<Object>& Object::getDestination() const {
-        return destination;
+    void Object::atPostMove(const CallParameters& param) {
     }
 
     const std::array<double, 3>& Object::getCoordinates() const {
         return coordinates;
     }
 
+    OpResult Object::setRelation(std::string_view name, const std::shared_ptr<Object> &val) {
+        if(!val) {
+            return clearRelation(name);
+        }
+        auto key = std::string(name);
+        auto rel = relations.find(key);
+        if(rel != relations.end()) {
+            auto result = clearRelation(name);
+            if(!result.first) return result;
+        }
+        relations[key] = val;
+        auto &reverse = val->reverseRelations;
+        auto rev = reverse.find(key);
+        if(rev == reverse.end()) {
+            auto &rel2 = reverse[key];
+            rel2.push_back(shared_from_this());
+        } else {
+            rev->second.push_back(shared_from_this());
+        }
+        return {true, std::nullopt};
+    }
 
-    void Object::addToContents(kaizermud::ObjectID id) {
-        auto it = objects.find(id);
-        if(it != objects.end()) {
-            addToContents(it->second);
+    OpResult Object::clearRelation(std::string_view name) {
+        auto key = std::string(name);
+        auto rel = relations.find(key);
+        if(rel == relations.end()) {
+            return {true, std::nullopt};
+        }
+        auto relation = rel->second;
+        relations.erase(rel);
+        auto &reverse = relation->reverseRelations;
+        auto rev = reverse.find(key);
+        if(rev != reverse.end()) {
+            auto ent = std::find(rev->second.begin(), rev->second.end(), shared_from_this());
+            rev->second.erase(ent);
         }
     }
 
-    void Object::addToContents(const std::shared_ptr<Object> &obj) {
-        contents.push_back(obj);
-        obj->location = shared_from_this();
+    std::shared_ptr<Object> Object::getRelation(std::string_view name) {
+        auto key = std::string(name);
+        auto it = relations.find(key);
+        if(it != relations.end()) return it->second;
+        return nullptr;
     }
 
-    void Object::removeFromContents(kaizermud::ObjectID id) {
-        auto it = objects.find(id);
-        if(it != objects.end()) {
-            removeFromContents(it->second);
+    std::optional<std::reference_wrapper<const std::vector<std::shared_ptr<Object>>>> Object::getReverseRelation(std::string_view name) {
+        auto key = std::string(name);
+        auto rev = reverseRelations.find(key);
+        if(rev != reverseRelations.end()) {
+            return rev->second;
         }
+        return std::nullopt;
     }
 
-    void Object::removeFromContents(const std::shared_ptr<Object> &obj) {
-        auto it = std::find(contents.begin(), contents.end(), obj);
-        if(it != contents.end()) {
-            contents.erase(it);
-            obj->location.reset();
+
+    OpResult Object::setString(std::string_view key, std::string_view value) {
+        if(key.empty()) {
+            return {false, "Key cannot be empty"};
         }
+        if(value.empty()) {
+            strings.erase(std::string(key));
+            return {true, std::nullopt};
+        }
+        strings[std::string(key)] = utils::intern(value);
+        return {true, std::nullopt};
+    }
+
+    OpResult Object::clearString(std::string_view key) {
+        if(key.empty()) {
+            return {false, "Key cannot be empty"};
+        }
+        strings.erase(std::string(key));
+        return {true, std::nullopt};
+    }
+
+    std::optional<std::string_view> Object::getString(std::string_view key) const {
+        if(key.empty()) {
+            return std::nullopt;
+        }
+        auto it = strings.find(std::string(key));
+        if(it == strings.end()) {
+            return std::nullopt;
+        }
+        return it->second;
     }
 
     // utility stuff...
@@ -456,22 +451,21 @@ OpResult Object::doPut(const std::shared_ptr<Object> &target, const std::shared_
         return {true, std::nullopt};
     }
 
-    std::string_view Object::getString(std::string_view key) const {
-        auto it = strings.find(std::string(key));
-        if(it != strings.end())
-            return it->second;
-        return "";
-    }
-
-    OpResult Object::setString(std::string_view key, const std::string &value) {
-        strings[std::string(key)] = utils::intern(value);
-        return {true, std::nullopt};
-    }
-
     void Object::send(const Message &msg) {
         if(session)
             session->send(msg);
     }
+
+    // Permission check
+    bool Object::isSuperuser() {
+        return false;
+        // TODO: Hook this up to Sessions.
+    }
+    bool Object::checkPermission(const std::shared_ptr<Object>& actor, std::string_view permission) {
+        return true;
+    }
+
+    // End of Object class
 
     std::pair<std::shared_ptr<Object>, std::optional<std::string_view>> createObject(std::string_view objType, std::string_view subType, std::optional<ObjectID> id) {
         auto it = objectRegistry.find(std::string(objType));

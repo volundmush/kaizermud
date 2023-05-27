@@ -1,5 +1,7 @@
 #pragma once
 #include "kaizermud/base.h"
+#include "SQLiteCpp/SQLiteCpp.h"
+
 
 namespace kaizermud::game {
 
@@ -57,6 +59,8 @@ namespace kaizermud::game {
     public:
         explicit StatHandler(const std::shared_ptr<Object>& obj);
         virtual void load();
+        virtual void loadFromDB(const std::shared_ptr<SQLite::Database> &db);
+        virtual void saveToDB(const std::shared_ptr<SQLite::Database> &db);
         std::shared_ptr<Object> obj;
     protected:
         bool loaded;

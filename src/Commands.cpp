@@ -89,7 +89,7 @@ namespace kaizermud::game {
                 return true;
             }
         }
-
+        return false;
     }
 
     void CommandHandler::load() {

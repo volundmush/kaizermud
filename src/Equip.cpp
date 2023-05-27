@@ -11,13 +11,21 @@ namespace kaizermud::game {
         this->slotType = utils::intern(slotType);
     }
 
-    void EquipSlot::equip(const std::shared_ptr<Object> object) {
+    void EquipSlot::equip(const std::shared_ptr<Object>& object) {
         item = object;
-        object->equi
+        object->atEquipped(handler->obj, slot);
     }
 
-    void EquipSlot::setPropertyVerb(const std::string &name, std::string_view value) {
-        properties[name] = utils::intern(value);
+    void EquipSlot::setProperty(const std::string &name, std::string_view value) {
+        properties[name] = utils::intern(std::string(value));
+    }
+
+    std::string_view EquipSlot::getProperty(std::string_view name) const {
+        auto it = properties.find(std::string(name));
+        if(it == properties.end()) {
+            return "";
+        }
+        return it->second;
     }
 
     std::string_view EquipSlot::getSlot() const {
@@ -40,8 +48,8 @@ namespace kaizermud::game {
         return true;
     }
 
-    OpResult EquipSlot::canEquip(const std::shared_ptr<Object> object) const {
-        if(item.has_value()) {
+    OpResult EquipSlot::canEquip(const std::shared_ptr<Object>& object) const {
+        if(item) {
             return {false, "You are already wearing something in that slot."};
         }
         return {true, std::nullopt};
@@ -95,20 +103,39 @@ namespace kaizermud::game {
             slots[slot] = entry.ctor(this, slot, entry.slotType);
             auto &slotObj = slots[slot];
             slotObj->setSortOrder(entry.sortOrder);
-            if(entry.wearVerb.has_value()) {
-                slotObj->setWearVerb(*entry.wearVerb);
+            for(const auto &[name, val]: entry.properties) {
+                slotObj->setProperty(name, val);
             }
-            if(entry.wearDisplay.has_value()) {
-                slotObj->setWearDisplay(*entry.wearDisplay);
+        }
+    }
+
+    void EquipHandler::saveToDB(const std::shared_ptr<SQLite::Database> &db) {
+        SQLite::Statement q1(*db, "INSERT INTO objectEquip (objectId, slot, itemId) VALUES (?, ?, ?);");
+        auto refID = obj->getId();
+
+        for(const auto &[slot, entry] : slots) {
+            if(entry->item) {
+                q1.bind(1, refID);
+                q1.bind(2, std::string(entry->getSlot()));
+                q1.bind(3, entry->item->getId());
+                q1.exec();
             }
-            if(entry.removeVerb.has_value()) {
-                slotObj->setRemoveVerb(*entry.removeVerb);
-            }
-            if(entry.removeDisplay.has_value()) {
-                slotObj->setRemoveDisplay(*entry.removeDisplay);
-            }
-            if(entry.listDisplay.has_value()) {
-                slotObj->setListDisplay(*entry.listDisplay);
+        }
+
+    }
+
+    void EquipHandler::loadFromDB(const std::shared_ptr<SQLite::Database> &db) {
+        SQLite::Statement q1(*db, "SELECT slot, itemId FROM objectEquip WHERE objectId = ?;");
+        q1.bind(1, obj->getId());
+        while(q1.executeStep()) {
+            auto slot = q1.getColumn(0).getString();
+            auto itemId = q1.getColumn(1).getInt64();
+            auto it = slots.find(slot);
+            if(it != slots.end()) {
+                auto found = objects.find(itemId);
+                if(found != objects.end()) {
+                    it->second->equip(found->second);
+                }
             }
         }
     }

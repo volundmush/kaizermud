@@ -94,4 +94,34 @@ namespace kaizermud::game {
             stats[name] = stat.ctor(this);
         }
     }
+
+    void StatHandler::loadFromDB(const std::shared_ptr<SQLite::Database> &db) {
+        // This should be called after load().
+
+        SQLite::Statement q1(*db, "SELECT statType, value FROM objectStats WHERE objectId = ?;");
+        q1.bind(1, obj->getId());
+
+        while(q1.executeStep()) {
+            auto statType = q1.getColumn(0).getString();
+            auto value = q1.getColumn(1).getDouble();
+
+            auto it = stats.find(statType);
+            if(it != stats.end()) {
+                it->second->set(value);
+            }
+        }
+
+    }
+
+    void StatHandler::saveToDB(const std::shared_ptr<SQLite::Database> &db) {
+        SQLite::Statement q1(*db, "INSERT INTO objectStats (objectId, statType, value) VALUES (?, ?, ?);");
+        auto refID = obj->getId();
+        for(const auto &[name, stat] : stats) {
+            if(!stat->shouldSave()) continue;
+            q1.bind(1, refID);
+            q1.bind(2, name);
+            q1.bind(3, stat->getBase());
+            q1.exec();
+        }
+    }
 }

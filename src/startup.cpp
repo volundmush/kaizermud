@@ -8,6 +8,8 @@
 
 namespace kaizermud {
 
+    std::vector<std::function<boost::asio::awaitable<void>()>> services;
+
     void startup(const boost::asio::ip::tcp::endpoint& endpoint) {
         // Create an ASIO executor
         boost::asio::io_context io_context;
@@ -20,6 +22,11 @@ namespace kaizermud {
 
         // Co_spawn the game main loop method on a strand
         boost::asio::co_spawn(boost::asio::make_strand(io_context), kaizermud::game::run(), boost::asio::detached);
+
+        // Co_spawn each service on a strand
+        for (auto& service : services) {
+            boost::asio::co_spawn(boost::asio::make_strand(io_context), service(), boost::asio::detached);
+        }
 
         // Run the io_context
         io_context.run();

@@ -16,12 +16,12 @@
 
 namespace kaizermud::net {
 
-    enum Protocol : uint8_t {
+    enum class Protocol : uint8_t {
         Telnet = 0,
         WebSocket = 1
     };
 
-    enum ColorType : uint8_t {
+    enum class ColorType : uint8_t {
         NoColor = 0,
         Standard = 1,
         Xterm256 = 2,
@@ -29,12 +29,12 @@ namespace kaizermud::net {
     };
 
     struct ProtocolCapabilities {
-        Protocol protocol{Telnet};
+        Protocol protocol{Protocol::Telnet};
         bool encryption = false;
         std::string clientName = "UNKNOWN", clientVersion = "UNKNOWN";
         std::string encoding = "";
         bool utf8 = false;
-        ColorType colorType = NoColor;
+        ColorType colorType = ColorType::NoColor;
         int width = 80, height = 52;
         bool gmcp = false, msdp = false, mssp = false, mxp = false;
         bool mccp2 = false, mccp2_active = false, mccp3 = false, mccp3_active = false;
@@ -56,14 +56,16 @@ namespace kaizermud::net {
         //void sendMSSP(const std::vector<std::tuple<std::string, std::string>> &data);
         //void sendGMCP(const std::string &txt);
         void onWelcome();
-        void onHeartbeat();
+        void onHeartbeat(boost::asio::steady_timer::duration deltaTime);
         void onNetworkDisconnected();
         [[nodiscard]] const ProtocolCapabilities& getCapabilities() const;
         [[nodiscard]] uint64_t getConnID() const;
-        [[nodiscard]] int64_t getAccountID() const;
+        [[nodiscard]] std::optional<ObjectID> getAccountID() const;
     protected:
         uint64_t connID;
-        int64_t accountID;
+
+        // A Connection might or might not be logged in.
+        std::optional<ObjectID> accountID;
         // Some time structs to handle when we received connections.
         // These probably need some updating on this and Thermite side...
         kaizermud::thermite::LinkManager &lm;
@@ -81,18 +83,10 @@ namespace kaizermud::net {
         // terribly wrong.
         uint64_t conn_id{};
 
-        // A Connection might or might not be logged in. -1 means not.
-        // Still debating using uint64_t for IDs and having std::optional<uint64_t>
-        // represent an unset or invalid ID. But a lot of softtware, like sqlite doesn't
-        // differentiate between signed and unsigned, so maybe staying signed is best.
-        int64_t account_id{-1};
-
         // Later we'll need to handle more than just text commands. But this should handle
         std::list<std::string> pending_commands;
 
         spsc_channel<boost::json::value> fromLink;
-
-
 
     };
 

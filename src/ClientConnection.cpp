@@ -9,9 +9,9 @@ namespace kaizermud::net {
 
         std::string protocol_str = obj["protocol"].as_string().c_str();
         if (protocol_str == "Telnet") {
-            protocol = Telnet;
+            protocol = Protocol::Telnet;
         } else if (protocol_str == "WebSocket") {
-            protocol = WebSocket;
+            protocol = Protocol::WebSocket;
         }
 
         encryption = obj["encryption"].as_bool();
@@ -22,13 +22,13 @@ namespace kaizermud::net {
 
         std::string color_str = obj["color"].as_string().c_str();
         if (color_str == "NoColor") {
-            colorType = NoColor;
+            colorType = ColorType::NoColor;
         } else if (color_str == "Standard") {
-            colorType = Standard;
+            colorType = ColorType::Standard;
         } else if (color_str == "Xterm256") {
-            colorType = Xterm256;
+            colorType = ColorType::Xterm256;
         } else if (color_str == "TrueColor") {
-            colorType = TrueColor;
+            colorType = ColorType::TrueColor;
         }
 
         width = obj["width"].as_int64();
@@ -62,7 +62,7 @@ namespace kaizermud::net {
 
     }
 
-    void ClientConnection::onHeartbeat() {
+    void ClientConnection::onHeartbeat(boost::asio::steady_timer::duration deltaTime) {
 
     }
 
@@ -83,7 +83,7 @@ namespace kaizermud::net {
         return connID;
     }
 
-    int64_t ClientConnection::getAccountID() const {
+    std::optional<ObjectID> ClientConnection::getAccountID() const {
         return accountID;
     }
 

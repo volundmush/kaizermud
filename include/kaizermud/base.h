@@ -25,7 +25,7 @@ namespace kaizermud {
         struct Message;
     }
 
-    using ObjectID = uint64_t;
+    using ObjectID = int64_t;
     using OpResult = std::pair<bool, std::optional<std::string>>;
 
 }

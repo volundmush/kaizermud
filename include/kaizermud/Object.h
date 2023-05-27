@@ -14,8 +14,12 @@
 #include "kaizermud/Stats.h"
 #include "kaizermud/Aspects.h"
 #include "kaizermud/Equip.h"
+#include "SQLiteCpp/SQLiteCpp.h"
+#include "kaizermud/CallParameters.h"
 
 namespace kaizermud::game {
+
+
 
     /**
      *  @brief Base class for all game objects.
@@ -55,13 +59,6 @@ namespace kaizermud::game {
         virtual void onPreSessionUnlink(const std::shared_ptr<Session>& sess);
         virtual void onPostSessionUnlink(const std::shared_ptr<Session>& sess);
 
-        std::unique_ptr<StatHandler> statHandler{};
-        std::unique_ptr<AspectHandler> aspectHandler{};
-        std::unique_ptr<EquipHandler> equipHandler{};
-
-        [[nodiscard]] virtual std::string_view getString(std::string_view key) const;
-        virtual OpResult setString(std::string_view key, const std::string &value);
-
         virtual void send(const Message &msg);
 
         // Administration Hooks
@@ -70,101 +67,72 @@ namespace kaizermud::game {
         virtual void onLoad();
         virtual void atServerReload();
         virtual void atServerShutdown();
+        virtual void loadFromDB(const std::shared_ptr<SQLite::Database>& db);
+        virtual void saveToDB(const std::shared_ptr<SQLite::Database>& db);
 
         // Info API Hooks
-        [[nodiscard]] virtual bool isSuperuser();
         [[nodiscard]] virtual std::string getDisplayName(std::shared_ptr<Object>& looker, std::string_view type = "normal");
         [[nodiscard]] virtual std::string renderAppearance(std::shared_ptr<Object>& looker, std::string_view type = "normal");
-
         [[nodiscard]] virtual std::string atLook(std::shared_ptr<Object>& target);
         virtual void atDesc(const std::shared_ptr<Object>& looker);
-
 
         // Inventory API Hooks
         [[nodiscard]] virtual std::vector<std::shared_ptr<Object>> getContents();
         [[nodiscard]] virtual std::vector<std::shared_ptr<Object>> getContents(std::string_view type);
 
-        // Get
-        [[nodiscard]] virtual OpResult doGet(const std::shared_ptr<Object>& target);
-        [[nodiscard]] virtual OpResult canGetObject(const std::shared_ptr<Object>& target);
-        [[nodiscard]] virtual OpResult atPreGet(const std::shared_ptr<Object>& getter);
-        virtual void atGet(const std::shared_ptr<Object>& getter);
-
-        // Drop
-        [[nodiscard]] virtual OpResult doDrop(const std::shared_ptr<Object>& target);
-        [[nodiscard]] virtual OpResult canDropObject(const std::shared_ptr<Object>& target);
-        [[nodiscard]] virtual OpResult atPreDrop(const std::shared_ptr<Object>& dropper);
-        virtual void atDrop(const std::shared_ptr<Object>& dropper);
-
-        // Give
-        [[nodiscard]] virtual OpResult doGive(const std::shared_ptr<Object>& target, const std::shared_ptr<Object>& recipient);
-        [[nodiscard]] virtual OpResult canGiveObject(const std::shared_ptr<Object>& target, const std::shared_ptr<Object>& recipient);
-        [[nodiscard]] virtual OpResult atPreGive(const std::shared_ptr<Object>& giver, const std::shared_ptr<Object>& recipient);
-        virtual void atGive(const std::shared_ptr<Object>& giver, const std::shared_ptr<Object>& recipient);
-
-        // Put
-        [[nodiscard]] virtual OpResult doPut(const std::shared_ptr<Object>& target, const std::shared_ptr<Object>& container);
-        [[nodiscard]] virtual OpResult canPutObject(const std::shared_ptr<Object>& target, const std::shared_ptr<Object>& container);
-        [[nodiscard]] virtual OpResult atPrePut(const std::shared_ptr<Object>& putter, const std::shared_ptr<Object>& container);
-        virtual void atPut(const std::shared_ptr<Object>& putter, const std::shared_ptr<Object>& container);
-
-
         virtual void atEquipItem(const std::shared_ptr<Object>& item, std::string_view slot);
+        virtual void atEquipped(const std::shared_ptr<Object>& user, std::string_view slot);
         virtual void atRemoveItem(const std::shared_ptr<Object>& item, std::string_view slot);
-
-        // Exit API hooks
-        // Target is an exit Object. Or anything with a Destination Set.
-        [[nodiscard]] virtual OpResult doTraverse(const std::shared_ptr<Object>& target);
-        [[nodiscard]] virtual OpResult atTraverse(const std::shared_ptr<Object>& traverser, const std::shared_ptr<Object>& dest);
-        virtual void atPostTraverse(const std::shared_ptr<Object>& traverser, const std::shared_ptr<Object>& source);
-        virtual void atFailedTraverse(const std::shared_ptr<Object>& traverser, const std::shared_ptr<Object>& dest);
+        virtual void atUnequip(const std::shared_ptr<Object>& user, std::string_view slot);
 
         // Interaction and Filtering Hooks
         virtual bool canDetect(const std::shared_ptr<Object>& target, std::string_view detectType = "see");
         virtual std::vector<std::shared_ptr<Object>> filterDetect(std::vector<std::shared_ptr<Object>>& objects, std::string_view detectType = "see");
 
-        // Communications and Social Hooks
-        [[nodiscard]] virtual OpResult doSay(std::string_view speech);
-        [[nodiscard]] virtual OpResult doWhisper(std::string_view speech, std::shared_ptr<Object>& target);
-        [[nodiscard]] virtual OpResult doEmote(std::string_view speech);
-
-        virtual void act(std::string_view message, int targets, const std::unordered_map<std::string, std::shared_ptr<Object>>& actors, std::string_view actType = "act", bool excludeSource = false);
-
         // Movement and Location API hooks.
-        [[nodiscard]] virtual OpResult moveTo(ObjectID dest, bool quiet = false, std::string_view moveType = "move");
-        [[nodiscard]] virtual OpResult moveTo(const std::shared_ptr<Object>& dest, bool quiet = false, std::string_view moveType = "move");
-        [[nodiscard]] virtual OpResult atPreMove(const std::shared_ptr<Object>& dest, std::string_view moveType);
-        [[nodiscard]] virtual OpResult atPreObjectLeave(const std::shared_ptr<Object>& obj, const std::shared_ptr<Object>& dest, std::string_view moveType);
-        [[nodiscard]] virtual OpResult atPreObjectReceive(const std::shared_ptr<Object>& obj, const std::shared_ptr<Object>& source, std::string_view moveType);
-        virtual void atObjectLeave(const std::shared_ptr<Object>& obj, const std::shared_ptr<Object>& dest, std::string_view moveType);
-        virtual void announceMoveFrom(const std::shared_ptr<Object>& source, const std::shared_ptr<Object>& dest, std::string_view moveType);
-        virtual void announceMoveTo(const std::shared_ptr<Object>& source, const std::shared_ptr<Object>& dest, std::string_view moveType);
-        virtual void atObjectReceive(const std::shared_ptr<Object>& obj, const std::shared_ptr<Object>& source, std::string_view moveType);
-        virtual void atPostMove(const std::shared_ptr<Object>& source, std::string_view moveType);
+        [[nodiscard]] virtual OpResult moveTo(CallParameters& param);
+        [[nodiscard]] virtual OpResult atPreMove(const CallParameters& param);
+        [[nodiscard]] virtual OpResult atPreObjectLeave(const CallParameters& param);
+        [[nodiscard]] virtual OpResult atPreObjectReceive(const CallParameters& param);
+        virtual void atObjectLeave(const CallParameters& param);
+        virtual void announceMoveFrom(const CallParameters& param);
+        virtual void announceMoveTo(const CallParameters& param);
+        virtual void atObjectReceive(const CallParameters& param);
+        virtual void atPostMove(const CallParameters& param);
 
-        virtual const std::shared_ptr<Object>& getLocation() const;
-        virtual const std::shared_ptr<Object>& getDestination() const;
         virtual const std::array<double, 3>& getCoordinates() const;
 
+        // Relations
+        [[nodiscard]] virtual OpResult setRelation(std::string_view name, const std::shared_ptr<Object>& val);
+        [[nodiscard]] virtual std::shared_ptr<Object> getRelation(std::string_view name);
+        virtual OpResult clearRelation(std::string_view name);
+        virtual std::optional<std::reference_wrapper<const std::vector<std::shared_ptr<Object>>>> getReverseRelation(std::string_view name);
+
+
+        // Strings
+        [[nodiscard]] virtual OpResult setString(std::string_view key, std::string_view value);
+        [[nodiscard]] virtual OpResult clearString(std::string_view key);
+        [[nodiscard]] virtual std::optional<std::string_view> getString(std::string_view key) const;
+
+        // Permission check system framework.
+        [[nodiscard]] virtual bool isSuperuser();
+        [[nodiscard]] virtual bool checkPermission(const std::shared_ptr<Object>& actor, std::string_view permission);
+
     protected:
-
-        void addToContents(ObjectID id);
-        void addToContents(const std::shared_ptr<Object>& obj);
-
-        void removeFromContents(ObjectID id);
-        void removeFromContents(const std::shared_ptr<Object>& obj);
-    private:
         ObjectID id{0};
-        std::array<double, 3> coordinates{};
-        std::shared_ptr<Object> location{}, destination{};
-        std::list<std::shared_ptr<Object>> contents{};
+        std::unique_ptr<StatHandler> statHandler{};
+        std::unique_ptr<AspectHandler> aspectHandler{};
+        std::unique_ptr<EquipHandler> equipHandler{};
+
         std::unordered_map<std::string, std::string_view> strings{};
+        std::unordered_map<std::string, std::shared_ptr<Object>> relations{};
+        std::unordered_map<std::string, std::vector<std::shared_ptr<Object>>> reverseRelations{};
+
+        std::array<double, 3> coordinates{};
 
         // 0 is no session, 1 is main puppet, 2 is sub puppet
         int sessionMode{0};
         std::shared_ptr<Session> session{};
-
-        std::optional<std::string_view> equippedAt{};
 
     };
 

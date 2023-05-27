@@ -17,5 +17,6 @@ namespace kaizermud::utils {
     extern std::unordered_set<std::string> stringPool;
 
     std::string_view intern(const std::string& str);
+    std::string_view intern(const std::string_view str);
 
 }

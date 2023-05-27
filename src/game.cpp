@@ -1,7 +1,6 @@
 #include "kaizermud/game.h"
 #include <chrono>
 #include <boost/asio/steady_timer.hpp>
-#include "kaizermud/Object.h"
 
 namespace kaizermud::game {
     using namespace std::chrono_literals;
@@ -16,7 +15,7 @@ namespace kaizermud::game {
 
 
     ObjectID getNextAvailableID() {
-        while(objects.count(state::lastInsertID)) {
+        while(entities.count(state::lastInsertID)) {
             state::lastInsertID++;
         }
         return state::lastInsertID;

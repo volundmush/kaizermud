@@ -1,5 +1,4 @@
 #include "kaizermud/Database.h"
-#include "kaizermud/Object.h"
 #include <iostream>
 
 namespace kaizermud::db {
@@ -84,14 +83,14 @@ namespace kaizermud::db {
             std::optional<ObjectID> id = stmt.getColumn(0).getInt();
             auto mainType = stmt.getColumn(1).getText();
             auto subType = stmt.getColumn(2).getText();
-            auto [obj, err] = game::createObject(mainType, subType, id);
+            auto [obj, err] = createEntity(mainType, subType, id);
         }
 
         // copy this just in case the load process alters it...
-        auto copyObjects = game::objects;
+        auto copyObjects = entities;
 
         for(const auto& [id, obj]: copyObjects) {
-            obj->loadFromDB(loadDb);
+            //apiobj->loadFromDB(loadDb);
         }
 
         for (const auto& func: postLoadFuncs) {
@@ -110,8 +109,8 @@ namespace kaizermud::db {
             func(saveDb);
         }
 
-        for (const auto& [id, obj]: game::objects) {
-            obj->saveToDB(saveDb);
+        for (const auto& [id, ent]: entities) {
+            //obj->saveToDB(saveDb);
         }
 
         for (const auto& func: postSaveFuncs) {

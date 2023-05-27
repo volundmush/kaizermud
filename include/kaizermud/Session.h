@@ -1,5 +1,6 @@
 #pragma once
 #include "kaizermud/ClientConnection.h"
+#include "Message.h"
 
 namespace kaizermud::game {
     // The Session class represents a specific session of play while a Character is online.
@@ -11,19 +12,19 @@ namespace kaizermud::game {
     // multiple locations.
     class Session {
     public:
-        explicit Session(const std::shared_ptr<Object> obj);
+        explicit Session(entt::entity ent);
         virtual ~Session() = default;
 
         // Send a message to the linked connections.
         virtual void send(const Message &msg);
-        virtual void atObjectDeleted(const std::shared_ptr<Object>& obj);
+        virtual void atObjectDeleted(entt::entity ent);
     protected:
         // The character this Session is linked to.
-        std::weak_ptr<Object> character;
+        entt::entity character;
         // The object this session is currently controlling. That's USUALLY going to be the Character,
         // but it might not be. For example, if the Character is in a vehicle, the vehicle might be
         // the puppet.
-        std::weak_ptr<Object> puppet;
+        entt::entity puppet;
         // This is a map of all the connections that are currently linked to this session.
         std::unordered_map<uint64_t, std::weak_ptr<kaizermud::net::ClientConnection>> clients;
 

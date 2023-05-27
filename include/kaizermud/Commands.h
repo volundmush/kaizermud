@@ -8,7 +8,7 @@ namespace kaizermud::game {
     class Command {
     public:
         Command(CommandHandler *handler);
-        virtual OpResult canExecute();
+        virtual OpResult<> canExecute();
         virtual void execute();
         virtual void parse(std::string_view input);
         virtual int priority();
@@ -28,12 +28,11 @@ namespace kaizermud::game {
     };
 
     extern std::unordered_map<std::string, std::unordered_map<std::string, CommandEntry>> commandRegistry;
-    OpResult registerCommand(CommandEntry entry);
+    OpResult<> registerCommand(CommandEntry entry);
 
     class CommandHandler {
     public:
-        CommandHandler(std::shared_ptr<Object> obj);
-        std::shared_ptr<Object> obj;
+
         std::vector<std::unique_ptr<Command>> commands;
         bool execute(std::string_view input);
         void load();

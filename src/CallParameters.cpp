@@ -2,15 +2,15 @@
 
 namespace kaizermud {
 
-    CallParameters& CallParameters::setObject(std::string_view name, const std::shared_ptr<Object> &obj) {
-        objects[std::string(name)] = obj;
+    CallParameters& CallParameters::setEntity(std::string_view name, entt::entity ent) {
+        entities[std::string(name)] = ent;
         return *this;
     }
 
 
-    std::shared_ptr<game::Object> CallParameters::getObject(std::string_view name) const {
-        auto it = objects.find(std::string(name));
-        if(it == objects.end()) return nullptr;
+    entt::entity CallParameters::getEntity(std::string_view name) const {
+        auto it = entities.find(std::string(name));
+        if(it == entities.end()) return entt::null;
         return it->second;
     }
 

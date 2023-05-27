@@ -1,9 +1,8 @@
 #include "kaizermud/Commands.h"
-#include "kaizermud/Object.h"
 
 namespace kaizermud::game {
 
-    OpResult Command::canExecute() {
+    OpResult<> Command::canExecute() {
         return {true, std::nullopt};
     }
 
@@ -37,7 +36,7 @@ namespace kaizermud::game {
 
     std::unordered_map<std::string, std::unordered_map<std::string, CommandEntry>> commandRegistry;
 
-    OpResult registerCommand(CommandEntry entry) {
+    OpResult<> registerCommand(CommandEntry entry) {
         if(entry.objType.empty()) {
             return {false, "CommandEntry objType cannot be empty"};
         }
@@ -93,6 +92,7 @@ namespace kaizermud::game {
     }
 
     void CommandHandler::load() {
+        /*
         loaded = true;
 
         std::unordered_map<std::string, CommandEntry> cmdsToLoad;
@@ -118,7 +118,7 @@ namespace kaizermud::game {
         });
 
         // Thank you copilot. I love you.
-
+*/
     }
 
 }

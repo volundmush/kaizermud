@@ -1,23 +1,23 @@
 #include "kaizermud/Aspects.h"
-#include "kaizermud/Object.h"
 #include "kaizermud/utils.h"
+#include "kaizermud/Components.h"
 
 namespace kaizermud::game {
 
     // Aspect
 
-    void Aspect::onRemove(AspectHandler *handler) {
+    void Aspect::onRemove(entt::entity ent) {
     }
 
-    void Aspect::onAdd(AspectHandler *handler) {
+    void Aspect::onAdd(entt::entity ent) {
     }
 
-    void Aspect::onLoad(AspectHandler *handler) {
+    void Aspect::onLoad(entt::entity ent) {
     }
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Aspect>>>> aspectRegistry;
 
-    OpResult registerAspect(const std::shared_ptr<Aspect> entry) {
+    OpResult<> registerAspect(const std::shared_ptr<Aspect> entry) {
         if(entry->objType.empty()) {
             return {false, "Object type cannot be empty"};
         }
@@ -36,8 +36,9 @@ namespace kaizermud::game {
 
     // AspectSlot
 
-    OpResult AspectSlot::setAspect(AspectHandler *handler, const std::string& saveKey, bool isLoading) {
-        auto objreg = aspectRegistry.find(std::string(handler->obj->getMainType()));
+    OpResult<> AspectSlot::setAspect(entt::entity ent, const std::string& saveKey, bool isLoading) {
+        auto &objinfo = registry.get<components::ObjectInfo>(ent);
+        auto objreg = aspectRegistry.find(std::string(objinfo.getMainType()));
         if(objreg == aspectRegistry.end()) {
             return {false, "No such object type"};
         }
@@ -53,29 +54,33 @@ namespace kaizermud::game {
             return {false, "No such aspect"};
         }
 
-        auto &aspect = handler->aspects[saveKey];
+        auto &aspects = registry.get_or_emplace<components::Aspects>(ent);
+
+        auto &aspect = aspects.data[saveKey];
 
         if (aspect != nullptr) {
-            aspect->onRemove(handler);
+            aspect->onRemove(ent);
         }
 
         aspect = keyreg->second;
         if(isLoading) {
-            aspect->onLoad(handler);
+            aspect->onLoad(ent);
         } else {
-            aspect->onAdd(handler);
+            aspect->onAdd(ent);
         }
 
         return {true, std::nullopt};
     }
 
-    OpResult AspectSlot::atPostLoad(AspectHandler *handler) {
+    OpResult<> AspectSlot::atPostLoad(entt::entity ent) {
         return {true, std::nullopt};
     }
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>> aspectSlotRegistry;
 
-    OpResult registerAspectSlot(std::shared_ptr<AspectSlot> entry) {
+    std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
+
+    OpResult<> registerAspectSlot(std::shared_ptr<AspectSlot> entry) {
         if(entry->objType.empty()) {
             return {false, "Object type cannot be empty"};
         }
@@ -87,64 +92,25 @@ namespace kaizermud::game {
         return {true, std::nullopt};
     }
 
-    // AspectHandler
-    AspectHandler::AspectHandler(const std::shared_ptr<Object>& obj) : obj(obj) {
-    }
-
-    void AspectHandler::load() {
-        if(loaded) {
-            return;
+    std::unordered_map<std::string, std::shared_ptr<AspectSlot>>& getAspectSlots(const std::pair<std::string_view, std::string_view>& objType) {
+        auto found = std::find_if(aspectSlotsCache.begin(), aspectSlotsCache.end(), [objType](auto &x) {return x.first == objType;});
+        if(found != aspectSlotsCache.end()) {
+            return found->second;
         }
-        loaded = true;
+        // We didn't find it, so we'll have to make one...
+        auto &newreg = aspectSlotsCache.emplace_back(objType, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>()).second;
 
-        std::unordered_map<std::string, std::shared_ptr<AspectSlot>> aspectSlotsToLoad;
-
-        for(const auto& type : obj->getTypes()) {
+        for(const auto& type : {objType.first, objType.second}) {
             auto objreg = aspectSlotRegistry.find(std::string(type));
             if(objreg == aspectSlotRegistry.end()) {
                 continue;
             }
             auto slotreg = objreg->second;
             for(const auto& [name, entry] : slotreg) {
-                aspectSlotsToLoad[name] = entry;
+                newreg[name] = entry;
             }
         }
+        return newreg;
 
-        for(const auto &[name, entry] : aspectSlotsToLoad) {
-
-            slots[name] = entry;
-        }
-
-    }
-
-    void AspectHandler::saveToDB(const std::shared_ptr<SQLite::Database> &db) {
-        SQLite::Statement q1(*db, "INSERT INTO objectAspect (objectId, aspectType, aspectKey) VALUES (?, ?, ?);");
-
-        auto objid = obj->getId();
-        for(const auto& [name, aspect] : aspects) {
-            if(aspect == nullptr) {
-                continue;
-            }
-            q1.bind(1, objid);
-            q1.bind(2, aspect->slotType);
-            q1.bind(3, aspect->saveKey);
-            q1.exec();
-            q1.reset();
-        }
-
-    }
-
-    void AspectHandler::loadFromDB(const std::shared_ptr<SQLite::Database> &db) {
-        SQLite::Statement q1(*db, "SELECT aspectType, aspectKey FROM objectAspect WHERE objectId = ?;");
-        q1.bind(1, obj->getId());
-        while(q1.executeStep()) {
-            auto slotType = q1.getColumn(0).getString();
-            auto aspectKey = q1.getColumn(1).getString();
-            auto slot = slots.find(slotType);
-            if(slot == slots.end()) {
-                continue;
-            }
-            slot->second->setAspect(this, aspectKey, true);
-        }
     }
 }

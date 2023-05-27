@@ -25,6 +25,8 @@ CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 CPMAddPackage("gh:Roblox/luau#0.570")
 CPMAddPackage("gh:SRombauts/SQLiteCpp#3.2.1")
 CPMAddPackage("gh:kunitoki/LuaBridge3#3.0-rc3")
+CPMAddPackage("gh:skypjack/entt#v3.11.1")
+
 SET(LUABRIDGE_TESTING OFF)
 SET(LUAU_BUILD_CLI OFF)
 SET(LUAU_BUILD_TESTS OFF)
@@ -45,6 +47,7 @@ SET(KAIZERMUD_INCLUDE_DIRS
         ${LuaBridge_SOURCE_DIR}/Source
         ${SQLiteCpp_SOURCE_DIR}/include
         ${FMT_SOURCE_DIR}/include
+        ${entt_SOURCE_DIR}/single_include
 )
 
 add_library(kaizermud ${KAIZERMUD_INCLUDE} ${KAIZERMUD_SRC})

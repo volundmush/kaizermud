@@ -1,4 +1,6 @@
 #include "kaizermud/Database.h"
+#include "kaizermud/Components.h"
+#include "kaizermud/Api.h"
 #include <iostream>
 
 namespace kaizermud::db {
@@ -13,48 +15,57 @@ namespace kaizermud::db {
             ");",
 
             "CREATE TABLE IF NOT EXISTS objectStrings (\n"
-            "    id INTEGER PRIMARY KEY,\n"
             "    objectId INTEGER NOT NULL,\n"
             "    key TEXT NOT NULL,\n"
             "    value TEXT NOT NULL,\n"
-            "    UNIQUE(objectId, key)\n"
+            "    PRIMARY KEY(objectId, key)\n"
+            ");",
+
+            "CREATE TABLE IF NOT EXISTS objectIntegers (\n"
+            "    objectId INTEGER NOT NULL,\n"
+            "    key TEXT NOT NULL,\n"
+            "    value INTEGER NOT NULL,\n"
+            "    PRIMARY KEY(objectId, key)\n"
+            ");",
+
+            "CREATE TABLE IF NOT EXISTS objectDoubles (\n"
+            "    objectId INTEGER NOT NULL,\n"
+            "    key TEXT NOT NULL,\n"
+            "    value REAL NOT NULL,\n"
+            "    PRIMARY KEY(objectId, key)\n"
             ");",
 
             "CREATE TABLE IF NOT EXISTS objectRelations (\n"
-            "    id INTEGER PRIMARY KEY,\n"
             "    objectId INTEGER NOT NULL,\n"
             "    relationType TEXT NOT NULL,\n"
             "    relationId INTEGER NOT NULL,\n"
-            "    UNIQUE(objectId, relationType, relationId)\n"
+            "    PRIMARY KEY(objectId, relationType)\n"
             ");",
 
             "CREATE TABLE IF NOT EXISTS objectStats (\n"
-            "    id INTEGER PRIMARY KEY,\n"
             "    objectId INTEGER NOT NULL,\n"
             "    statType TEXT NOT NULL,\n"
             "    value REAL NOT NULL,\n"
-            "    UNIQUE(objectId, statType)\n"
+            "    PRIMARY KEY(objectId, statType)\n"
             ");",
 
-            "CREATE TABLE IF NOT EXISTS objectEquip (\n"
-            "    id INTEGER PRIMARY KEY,\n"
+            "CREATE TABLE IF NOT EXISTS objectEquipment (\n"
             "    objectId INTEGER NOT NULL,\n"
             "    slot TEXT NOT NULL,\n"
             "    itemId INTEGER NOT NULL,\n"
-            "    UNIQUE(objectId, slot)\n"
+            "    PRIMARY KEY(objectId, slot)\n"
             ");"
 
             "CREATE TABLE IF NOT EXISTS objectAspect ("
-            "   id INTEGER PRIMARY KEY,"
             "   objectId INTEGER NOT NULL,"
             "   aspectType TEXT NOT NULL,"
             "   aspectKey TEXT NOT NULL,"
-            "   UNIQUE(objectId, aspectType)"
+            "   PRIMARY KEY(objectId, aspectType)"
             ");"
 
     };
 
-    void runQuery(const std::shared_ptr<SQLite::Database>& db, const std::string& query) {
+    void runQuery(const std::shared_ptr<SQLite::Database>& db, std::string_view query) {
         try {
             db->exec(query.data());
         }
@@ -71,7 +82,211 @@ namespace kaizermud::db {
         }
     }
 
-    void loadDatabase(const std::string& path) {
+    void saveToDB(entt::entity ent, const std::shared_ptr<SQLite::Database>& db) {
+        SQLite::Statement q1(*db, "INSERT INTO objects (id, mainType, subType) VALUES (?, ?, ?)");
+
+        auto &objinfo = registry.get<components::ObjectInfo>(ent);
+        q1.bind(1, objinfo.id);
+        q1.bind(2, std::string(objinfo.getMainType()));
+        q1.bind(3, std::string(objinfo.getSubType()));
+        q1.exec();
+
+        SQLite::Statement q2(*db, "INSERT INTO objectStrings (objectId, key, value) VALUES (?, ?, ?)");
+        auto strings = registry.try_get<components::Strings>(ent);
+        if (strings) {
+            for (const auto& [key, value]: strings->data) {
+                if(value.empty()) continue;
+                q2.bind(1, objinfo.id);
+                q2.bind(2, key);
+                q2.bind(3, std::string(value));
+                q2.exec();
+                q2.reset();
+            }
+        }
+
+        SQLite::Statement q3(*db, "INSERT INTO objectIntegers (objectId, key, value) VALUES (?, ?, ?)");
+        auto ints = registry.try_get<components::Integers>(ent);
+        if (ints) {
+            for (const auto& [key, value]: ints->data) {
+                q3.bind(1, objinfo.id);
+                q3.bind(2, key);
+                q3.bind(3, value);
+                q3.exec();
+                q3.reset();
+            }
+        }
+
+        SQLite::Statement q4(*db, "INSERT INTO objectDoubles (objectId, key, value) VALUES (?, ?, ?)");
+        auto doubles = registry.try_get<components::Doubles>(ent);
+        if (doubles) {
+            for (const auto& [key, value]: doubles->data) {
+                q4.bind(1, objinfo.id);
+                q4.bind(2, key);
+                q4.bind(3, value);
+                q4.exec();
+                q4.reset();
+            }
+        }
+
+        SQLite::Statement q5(*db, "INSERT INTO objectRelations (objectId, relationType, relationId) VALUES (?, ?, ?)");
+        auto relations = registry.try_get<components::Relations>(ent);
+        if (relations) {
+            for (const auto& [key, value]: relations->data) {
+                q5.bind(1, objinfo.id);
+                q5.bind(2, key);
+                q5.bind(3, kaizermud::api::getID(ent));
+                q5.exec();
+                q5.reset();
+            }
+        }
+
+        SQLite::Statement q6(*db, "INSERT INTO objectStats (objectId, statType, value) VALUES (?, ?, ?)");
+        auto stats = registry.try_get<components::Stats>(ent);
+        if (stats) {
+            for (const auto& [key, value]: stats->data) {
+                q6.bind(1, objinfo.id);
+                q6.bind(2, key);
+                q6.bind(3, value);
+                q6.exec();
+                q6.reset();
+            }
+        }
+
+        SQLite::Statement q7(*db, "INSERT INTO objectEquipment (objectId, slot, itemId) VALUES (?, ?, ?)");
+        auto equip = registry.try_get<components::Equipment>(ent);
+        if (equip) {
+            for (const auto& [key, value]: equip->data) {
+                q7.bind(1, objinfo.id);
+                q7.bind(2, key);
+                q7.bind(3, kaizermud::api::getID(value));
+                q7.exec();
+                q7.reset();
+            }
+        }
+
+        SQLite::Statement q8(*db, "INSERT INTO objectAspect (objectId, aspectType, aspectKey) VALUES (?, ?, ?)");
+        auto aspects = registry.try_get<components::Aspects>(ent);
+        if (aspects) {
+            for (const auto& [key, value]: aspects->data) {
+                q8.bind(1, objinfo.id);
+                q8.bind(2, key);
+                q8.bind(3, std::string(value->saveKey));
+                q8.exec();
+                q8.reset();
+            }
+        }
+
+    }
+
+    void loadFromDB(entt::entity ent, const std::shared_ptr<SQLite::Database>& db) {
+        // Let's load the components we saved in saveToDB. But, we only want to create
+        // components when the saved data exists.
+
+        auto id = kaizermud::api::getID(ent);
+
+        SQLite::Statement q1(*db, "SELECT * FROM objectStrings WHERE objectId = ?");
+        q1.bind(1, id);
+
+        // Now we check if we got any results...
+        if (q1.executeStep()) {
+            auto& strings = registry.emplace<components::Strings>(ent);
+            do {
+                auto key = q1.getColumn(1).getText();
+                auto value = q1.getColumn(2).getText();
+                strings.data[key] = value;
+            } while (q1.executeStep());
+        }
+        // Thank you copilot.
+
+        SQLite::Statement q2(*db, "SELECT * FROM objectIntegers WHERE objectId = ?");
+        q2.bind(1, id);
+        if (q2.executeStep()) {
+            auto& ints = registry.emplace<components::Integers>(ent);
+            do {
+                auto key = q2.getColumn(1).getText();
+                auto value = q2.getColumn(2).getInt();
+                ints.data[key] = value;
+            } while (q2.executeStep());
+        }
+
+        SQLite::Statement q3(*db, "SELECT * FROM objectDoubles WHERE objectId = ?");
+        q3.bind(1, id);
+
+        if (q3.executeStep()) {
+            auto& doubles = registry.emplace<components::Doubles>(ent);
+            do {
+                auto key = q3.getColumn(1).getText();
+                auto value = q3.getColumn(2).getDouble();
+                doubles.data[key] = value;
+            } while (q3.executeStep());
+        }
+
+        SQLite::Statement q4(*db, "SELECT * FROM objectRelations WHERE objectId = ?");
+        q4.bind(1, id);
+
+        if(q4.executeStep()) {
+            do {
+                auto key = q4.getColumn(1).getText();
+                auto value = q4.getColumn(2).getInt();
+
+                auto it = entities.find(value);
+                if (it != entities.end()) {
+                    kaizermud::api::setRelation(ent, key, it->second);
+                }
+
+            } while (q4.executeStep());
+        }
+
+        SQLite::Statement q5(*db, "SELECT * FROM objectStats WHERE objectId = ?");
+        q5.bind(1, id);
+
+        if(q5.executeStep()) {
+            auto& stats = registry.emplace<components::Stats>(ent);
+            do {
+                auto key = q5.getColumn(1).getText();
+                auto value = q5.getColumn(2).getInt();
+                stats.data[key] = value;
+            } while (q5.executeStep());
+        }
+
+        SQLite::Statement q6(*db, "SELECT * FROM objectEquipment WHERE objectId = ?");
+        q6.bind(1, id);
+
+        if(q6.executeStep()) {
+            auto& equip = registry.emplace<components::Equipment>(ent);
+            do {
+                auto key = q6.getColumn(1).getText();
+                auto value = q6.getColumn(2).getInt();
+
+                auto it = entities.find(value);
+                if (it != entities.end()) {
+                    equip.data[key] = it->second;
+                }
+
+            } while (q6.executeStep());
+        }
+
+        SQLite::Statement q7(*db, "SELECT * FROM objectAspect WHERE objectId = ?");
+        q7.bind(1, id);
+
+        if(q7.executeStep()) {
+            auto& aspects = registry.emplace<components::Aspects>(ent);
+            do {
+                auto key = q7.getColumn(1).getText();
+                auto value = q7.getColumn(2).getText();
+                auto aspectKey = q7.getColumn(3).getText();
+
+                auto [success, err] = kaizermud::api::setAspect(ent, key, aspectKey);
+
+            } while (q7.executeStep());
+        }
+
+
+
+
+    }
+
+    void loadDatabase(std::string_view path) {
         auto loadDb = std::make_shared<SQLite::Database>(path.data(), SQLite::OPEN_READONLY);
 
         for (const auto& func: preLoadFuncs) {
@@ -83,14 +298,14 @@ namespace kaizermud::db {
             std::optional<ObjectID> id = stmt.getColumn(0).getInt();
             auto mainType = stmt.getColumn(1).getText();
             auto subType = stmt.getColumn(2).getText();
-            auto [obj, err] = createEntity(mainType, subType, id);
+            auto [ent, err] = createEntity(mainType, subType, id);
         }
 
         // copy this just in case the load process alters it...
         auto copyObjects = entities;
 
-        for(const auto& [id, obj]: copyObjects) {
-            //apiobj->loadFromDB(loadDb);
+        for(const auto& [id, ent]: copyObjects) {
+            loadFromDB(ent, loadDb);
         }
 
         for (const auto& func: postLoadFuncs) {
@@ -98,7 +313,7 @@ namespace kaizermud::db {
         }
     }
 
-    void saveDatabase(const std::string& path) {
+    void saveDatabase(std::string_view path) {
         auto saveDb = std::make_shared<SQLite::Database>(path.data(), SQLite::OPEN_READWRITE | SQLite::OPEN_CREATE);
 
         SQLite::Transaction transaction(*saveDb);
@@ -110,7 +325,7 @@ namespace kaizermud::db {
         }
 
         for (const auto& [id, ent]: entities) {
-            //obj->saveToDB(saveDb);
+            saveToDB(ent, saveDb);
         }
 
         for (const auto& func: postSaveFuncs) {

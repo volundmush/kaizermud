@@ -22,7 +22,7 @@ namespace kaizermud {
     extern entt::registry registry;
     extern std::unordered_map<ObjectID, entt::entity> entities;
 
-    OpResult<entt::entity> createEntity(const std::string& objType, const std::string& subType, std::optional<ObjectID> id = std::nullopt);
+    OpResult<entt::entity> createEntity(std::string_view objType, std::string_view subType, std::optional<ObjectID> id = std::nullopt);
 
 
 }

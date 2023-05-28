@@ -28,15 +28,15 @@ namespace kaizermud::game {
             return {false, "Save key cannot be empty"};
         }
 
-        auto &objreg = aspectRegistry[entry->objType];
-        auto &slotreg = objreg[entry->slotType];
-        slotreg[entry->saveKey] = entry;
+        auto &objreg = aspectRegistry[std::string(entry->objType)];
+        auto &slotreg = objreg[std::string(entry->slotType)];
+        slotreg[std::string(entry->saveKey)] = entry;
         return {true, std::nullopt};
     }
 
     // AspectSlot
 
-    OpResult<> AspectSlot::setAspect(entt::entity ent, const std::string& saveKey, bool isLoading) {
+    OpResult<> AspectSlot::setAspect(entt::entity ent, std::string_view saveKey, bool isLoading) {
         auto &objinfo = registry.get<components::ObjectInfo>(ent);
         auto objreg = aspectRegistry.find(std::string(objinfo.getMainType()));
         if(objreg == aspectRegistry.end()) {
@@ -48,7 +48,7 @@ namespace kaizermud::game {
             return {false, "No such slot type"};
         }
 
-        auto keyreg = slotreg->second.find(saveKey);
+        auto keyreg = slotreg->second.find(std::string(saveKey));
 
         if(keyreg == slotreg->second.end()) {
             return {false, "No such aspect"};
@@ -56,7 +56,7 @@ namespace kaizermud::game {
 
         auto &aspects = registry.get_or_emplace<components::Aspects>(ent);
 
-        auto &aspect = aspects.data[saveKey];
+        auto &aspect = aspects.data[std::string(saveKey)];
 
         if (aspect != nullptr) {
             aspect->onRemove(ent);
@@ -78,7 +78,7 @@ namespace kaizermud::game {
 
     std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>> aspectSlotRegistry;
 
-    std::vector<std::pair<std::pair<std::string, std::string>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
+    std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
 
     OpResult<> registerAspectSlot(std::shared_ptr<AspectSlot> entry) {
         if(entry->objType.empty()) {
@@ -87,12 +87,12 @@ namespace kaizermud::game {
         if(entry->slotType.empty()) {
             return {false, "Slot type cannot be empty"};
         }
-        auto &objreg = aspectSlotRegistry[entry->objType];
-        objreg[entry->slotType] = entry;
+        auto &objreg = aspectSlotRegistry[std::string(entry->objType)];
+        objreg[std::string(entry->slotType)] = entry;
         return {true, std::nullopt};
     }
 
-    std::unordered_map<std::string, std::shared_ptr<AspectSlot>>& getAspectSlots(const std::pair<std::string, std::string>& objType) {
+    std::unordered_map<std::string, std::shared_ptr<AspectSlot>>& getAspectSlots(const std::pair<std::string_view, std::string_view>& objType) {
         auto found = std::find_if(aspectSlotsCache.begin(), aspectSlotsCache.end(), [objType](auto &x) {return x.first == objType;});
         if(found != aspectSlotsCache.end()) {
             return found->second;

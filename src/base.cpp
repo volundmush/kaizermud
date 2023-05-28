@@ -8,7 +8,7 @@ namespace kaizermud {
     entt::registry registry;
     std::unordered_map<ObjectID, entt::entity> entities;
 
-    OpResult<entt::entity> createEntity(const std::string& objType, const std::string& subType, std::optional<ObjectID> id) {
+    OpResult<entt::entity> createEntity(std::string_view objType, std::string_view subType, std::optional<ObjectID> id) {
 
         ObjectID newID;
 
@@ -23,8 +23,9 @@ namespace kaizermud {
 
         auto ent = registry.create();
         auto &info = registry.get_or_emplace<components::ObjectInfo>(ent);
-        info.types.first = objType;
-        info.types.second = subType;
+        info.types.first = utils::intern(objType);
+        info.types.second = utils::intern(subType);
+        info.id = newID;
         entities[newID] = ent;
         api::atCreate(ent);
         return {ent, std::nullopt};

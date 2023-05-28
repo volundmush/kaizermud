@@ -12,7 +12,7 @@ namespace kaizermud::game {
     class EquipSlot {
     public:
         virtual ~EquipSlot() = default;
-        std::string objType, slot, slotType;
+        std::string_view objType, slot, slotType;
         int sortOrder{0};
         virtual void equip(entt::entity ent);
         [[nodiscard]] virtual bool isAvailable(entt::entity ent);

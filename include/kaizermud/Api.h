@@ -6,6 +6,7 @@
 
 namespace kaizermud::api {
 
+    // Handy-ass template for holding onto and executing API calls by specificity.
     template <typename ResultType, typename... Args>
     class ApiCall {
     public:
@@ -44,22 +45,34 @@ namespace kaizermud::api {
     extern ApiCall<void> atCreate;
     void defaultAtCreate(entt::entity ent);
 
-    // Strings
-    extern ApiCall<OpResult<>, const std::string&, const std::string&> setString;
-    extern ApiCall<OpResult<>, const std::string&> clearString;
-    extern ApiCall<std::optional<std::string>, const std::string&> getString;
+    // Info
+    extern ApiCall<ObjectID> getID;
+    ObjectID defaultGetID(entt::entity ent);
 
-    OpResult<> defaultSetString(entt::entity ent, const std::string&, const std::string&);
-    OpResult<> defaultClearString(entt::entity ent, const std::string&);
-    std::optional<std::string> defaultGetString(entt::entity ent, const std::string&);
+    // Strings
+    extern ApiCall<OpResult<>, std::string_view, std::string_view> setString;
+    extern ApiCall<OpResult<>, std::string_view> clearString;
+    extern ApiCall<std::optional<std::string_view>, std::string_view> getString;
+
+    OpResult<> defaultSetString(entt::entity ent, std::string_view, std::string_view);
+    OpResult<> defaultClearString(entt::entity ent, std::string_view);
+    std::optional<std::string_view> defaultGetString(entt::entity ent, std::string_view);
 
     // Relations
-    extern ApiCall<OpResult<>, const std::string&, entt::entity> setRelation;
-    extern ApiCall<OpResult<>, const std::string&> clearRelation;
-    extern ApiCall<entt::entity, const std::string&> getRelation;
-    extern ApiCall<std::optional<std::reference_wrapper<const std::vector<entt::entity>>>, const std::string&> getReverseRelation;
+    extern ApiCall<OpResult<>, std::string_view, entt::entity> setRelation;
+    extern ApiCall<OpResult<>, std::string_view> clearRelation;
+    extern ApiCall<entt::entity, std::string_view> getRelation;
+    extern ApiCall<std::optional<std::reference_wrapper<const std::vector<entt::entity>>>, std::string_view> getReverseRelation;
 
-    OpResult<> defaultClearRelation(entt::entity ent, const std::string& name);
-    entt::entity defaultGetRelation(entt::entity ent, const std::string& name);
-    std::optional<std::reference_wrapper<const std::vector<entt::entity>>> defaultGetReverseRelation(entt::entity ent, const std::string& name);
+    OpResult<> defaultClearRelation(entt::entity ent, std::string_view name);
+    entt::entity defaultGetRelation(entt::entity ent, std::string_view name);
+    std::optional<std::reference_wrapper<const std::vector<entt::entity>>> defaultGetReverseRelation(entt::entity ent, std::string_view name);
+
+    // Aspects
+    extern ApiCall<OpResult<>, std::string_view, std::string_view> setAspect;
+    extern ApiCall<std::shared_ptr<game::Aspect>, std::string_view> getAspect;
+
+    OpResult<> defaultSetAspect(entt::entity ent, std::string_view name, std::string_view value);
+    std::shared_ptr<game::Aspect> defaultGetAspect(entt::entity ent, std::string_view name);
+
 }

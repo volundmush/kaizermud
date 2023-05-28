@@ -12,9 +12,16 @@ namespace kaizermud::api {
 
     ApiCall<void> atCreate(defaultAtCreate);
 
+    // Info
+    ObjectID defaultGetID(entt::entity ent) {
+        return registry.get<ObjectInfo>(ent).id;
+    }
+
+    ApiCall<ObjectID> getID(defaultGetID);
+
 
     // Strings
-    OpResult<> defaultSetString(entt::entity ent, const std::string& key, const std::string& value) {
+    OpResult<> defaultSetString(entt::entity ent, std::string_view key, std::string_view value) {
         if(key.empty()) {
             return {false, "Key cannot be empty"};
         }
@@ -23,26 +30,26 @@ namespace kaizermud::api {
         }
 
         auto &sc = registry.get_or_emplace<Strings>(ent);
-        sc.data[key] = value;
+        sc.data[std::string(key)] = utils::intern(value);
         return {true, std::nullopt};
 
     }
 
-    ApiCall<OpResult<>, const std::string&, const std::string&> setString(defaultSetString);
+    ApiCall<OpResult<>, std::string_view, std::string_view> setString(defaultSetString);
 
-    OpResult<> defaultClearString(entt::entity ent, const std::string& key) {
+    OpResult<> defaultClearString(entt::entity ent, std::string_view key) {
         if(key.empty()) {
             return {false, "Key cannot be empty"};
         }
         auto &sc = registry.get_or_emplace<Strings>(ent);
-        sc.data.erase(key);
+        sc.data.erase(std::string(key));
         return {true, std::nullopt};
     }
 
-    ApiCall<OpResult<>, const std::string&> clearString(defaultClearString);
+    ApiCall<OpResult<>, std::string_view> clearString(defaultClearString);
 
 
-    std::optional<std::string> defaultGetString(entt::entity ent, const std::string& key) {
+    std::optional<std::string_view> defaultGetString(entt::entity ent, std::string_view key) {
         if(key.empty()) {
             return std::nullopt;
         }
@@ -50,40 +57,42 @@ namespace kaizermud::api {
         if(!sc) {
             return std::nullopt;
         }
-        auto it = sc->data.find(key);
+        auto it = sc->data.find(std::string(key));
         if(it == sc->data.end()) {
             return std::nullopt;
         }
         return it->second;
     }
 
-    ApiCall<std::optional<std::string>, const std::string&> getString(defaultGetString);
+    ApiCall<std::optional<std::string_view>, std::string_view> getString(defaultGetString);
 
 
     // Relations
-    OpResult<> defaultSetRelation(entt::entity ent, const std::string& name, entt::entity target) {
+    OpResult<> defaultSetRelation(entt::entity ent, std::string_view name, entt::entity target) {
         auto &rel = registry.get_or_emplace<Relations>(ent);
-        auto exist = rel.data.find(name);
+        auto key = std::string(name);
+        auto exist = rel.data.find(key);
         if(exist != rel.data.end()) {
-            auto [removed, whynot] = clearRelation(ent, name);
+            auto [removed, whynot] = clearRelation(ent, key);
             if(!removed) {
                 return {false, whynot};
             }
         }
-        rel.data[name] = {target};
+        rel.data[key] = {target};
         auto &rev = registry.get_or_emplace<ReverseRelations>(target);
-        rev.data[name].push_back(ent);
+        rev.data[key].push_back(ent);
         return {true, std::nullopt};
     }
 
-    ApiCall<OpResult<>, const std::string&, entt::entity> setRelation(defaultSetRelation);
+    ApiCall<OpResult<>, std::string_view, entt::entity> setRelation(defaultSetRelation);
 
-    OpResult<> defaultClearRelation(entt::entity ent, const std::string& name) {
+    OpResult<> defaultClearRelation(entt::entity ent, std::string_view name) {
         auto rel = registry.try_get<Relations>(ent);
         if(!rel) {
             return {true, std::nullopt};
         }
-        auto it = rel->data.find(name);
+        auto key = std::string(name);
+        auto it = rel->data.find(key);
         if(it == rel->data.end()) {
             return {true, std::nullopt};
         }
@@ -91,41 +100,54 @@ namespace kaizermud::api {
         rel->data.erase(it);
         auto rev = registry.try_get<ReverseRelations>(it->second);
         if(rev) {
-            auto &vec = rev->data[name];
+            auto &vec = rev->data[key];
             vec.erase(std::remove(vec.begin(), vec.end(), ent), vec.end());
         }
         return {true, std::nullopt};
     }
 
-    ApiCall<OpResult<>, const std::string&> clearRelation(defaultClearRelation);
+    ApiCall<OpResult<>, std::string_view> clearRelation(defaultClearRelation);
 
 
-    entt::entity defaultGetRelation(entt::entity ent, const std::string& name) {
+    entt::entity defaultGetRelation(entt::entity ent, std::string_view name) {
         auto rel = registry.try_get<Relations>(ent);
         if(!rel) {
             return entt::null;
         }
-        auto it = rel->data.find(name);
+        auto it = rel->data.find(std::string(name));
         if(it == rel->data.end()) {
             return entt::null;
         }
         return it->second;
     }
 
-    ApiCall<entt::entity, const std::string&> getRelation(defaultGetRelation);
+    ApiCall<entt::entity, std::string_view> getRelation(defaultGetRelation);
 
-    std::optional<std::reference_wrapper<const std::vector<entt::entity>>> defaultGetReverseRelation(entt::entity ent, const std::string& name) {
+    std::optional<std::reference_wrapper<const std::vector<entt::entity>>> defaultGetReverseRelation(entt::entity ent, std::string_view name) {
         auto rev = registry.try_get<ReverseRelations>(ent);
         if(!rev) {
             return std::nullopt;
         }
-        auto it = rev->data.find(name);
+        auto it = rev->data.find(std::string(name));
         if(it == rev->data.end()) {
             return std::nullopt;
         }
         return std::cref(it->second);
     }
 
-    ApiCall<std::optional<std::reference_wrapper<const std::vector<entt::entity>>>, const std::string&> getReverseRelation(defaultGetReverseRelation);
+    ApiCall<std::optional<std::reference_wrapper<const std::vector<entt::entity>>>, std::string_view> getReverseRelation(defaultGetReverseRelation);
+
+    // Aspects
+    OpResult<> defaultSetAspect(entt::entity ent, std::string_view name, std::string_view value) {
+        auto &objinfo = registry.get<ObjectInfo>(ent);
+        auto slots = game::getAspectSlots(objinfo.types);
+        auto it = slots.find(std::string(name));
+        if(it == slots.end()) {
+            return {false, "No such aspect slot"};
+        }
+        return it->setAspect(ent, value);
+    }
+
+    ApiCall<OpResult<>, std::string_view, std::string_view> setAspect(defaultSetAspect);
 
 }

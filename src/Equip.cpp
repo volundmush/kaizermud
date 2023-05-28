@@ -34,11 +34,11 @@ namespace kaizermud::game {
             return {false, "EquipEntry slotType cannot be empty"};
         }
 
-        auto &reg = equipRegistry[entry->objType];
-        if(reg.find(entry->slot) != reg.end()) {
+        auto &reg = equipRegistry[std::string(entry->objType)];
+        if(reg.find(std::string(entry->slot)) != reg.end()) {
             return {false, "EquipEntry already registered"};
         }
-        reg[entry->slot] = entry;
+        reg[std::string(entry->slot)] = entry;
         return {true, std::nullopt};
     }
 

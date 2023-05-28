@@ -10,12 +10,12 @@ namespace kaizermud::game {
         Command(CommandHandler *handler);
         virtual OpResult<> canExecute();
         virtual void execute();
-        virtual void parse(const std::string& input);
+        virtual void parse(std::string_view input);
         virtual int priority();
         virtual bool isAvailable();
         virtual std::string getHelp();
         virtual void reset();
-        virtual bool match(const std::string& input);
+        virtual bool match(std::string_view input);
 
     protected:
         CommandHandler *handler;
@@ -34,7 +34,7 @@ namespace kaizermud::game {
     public:
 
         std::vector<std::unique_ptr<Command>> commands;
-        bool execute(const std::string& input);
+        bool execute(std::string_view input);
         void load();
     protected:
         bool loaded;

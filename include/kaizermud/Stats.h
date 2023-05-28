@@ -11,7 +11,7 @@ namespace kaizermud::game {
     class Stat {
     public:
         virtual ~Stat() = default;
-        std::string objType, name, saveKey;
+        std::string_view objType, name, saveKey;
         virtual void set(entt::entity ent, double value) = 0;
         virtual void modify(entt::entity ent, double value) = 0;
         [[nodiscard]] virtual double get(entt::entity ent);

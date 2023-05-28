@@ -23,7 +23,7 @@ set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 CPMAddPackage("gh:fmtlib/fmt#9.1.0")
 CPMAddPackage("gh:Roblox/luau#0.570")
-CPMAddPackage("gh:SRombauts/SQLiteCpp#3.2.1")
+CPMAddPackage("gh:SRombauts/SQLiteCpp#3.3.0")
 CPMAddPackage("gh:kunitoki/LuaBridge3#3.0-rc3")
 CPMAddPackage("gh:skypjack/entt#v3.11.1")
 

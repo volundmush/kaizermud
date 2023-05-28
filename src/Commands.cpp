@@ -10,7 +10,7 @@ namespace kaizermud::game {
 
     }
 
-    void Command::parse(const std::string& input) {
+    void Command::parse(std::string_view input) {
 
     }
 
@@ -30,7 +30,7 @@ namespace kaizermud::game {
         args.clear();
     }
 
-    bool Command::match(const std::string& input) {
+    bool Command::match(std::string_view input) {
         return false;
     }
 
@@ -58,7 +58,7 @@ namespace kaizermud::game {
         return {true, std::nullopt};
     }
 
-    bool CommandHandler::execute(const std::string& input) {
+    bool CommandHandler::execute(std::string_view input) {
         // We only load the commands when we need them.
         // Otherwise, every object in the game would have
         // to load all the commands, even if they're not

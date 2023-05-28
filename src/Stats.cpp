@@ -16,13 +16,13 @@ namespace kaizermud::game {
             return {false, "StatEntry name cannot be empty"};
         }
 
-        auto &reg = statRegistry[entry->objType];
+        auto &reg = statRegistry[std::string(entry->objType)];
 
-        if(reg.find(entry->saveKey) != reg.end()) {
+        if(reg.find(std::string(entry->saveKey)) != reg.end()) {
             return {false, "StatEntry already registered"};
         }
 
-        reg[entry->saveKey] = entry;
+        reg[std::string(entry->saveKey)] = entry;
         return {true, std::nullopt};
     }
 

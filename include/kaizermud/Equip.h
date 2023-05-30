@@ -5,14 +5,12 @@
 #include "SQLiteCpp/SQLiteCpp.h"
 
 
-namespace kaizermud::game {
-
-    class EquipHandler;
+namespace kaizer {
 
     class EquipSlot {
     public:
         virtual ~EquipSlot() = default;
-        std::string_view objType, slot, slotType;
+        std::string objType, slot, slotType;
         int sortOrder{0};
         virtual void equip(entt::entity ent);
         [[nodiscard]] virtual bool isAvailable(entt::entity ent);
@@ -20,8 +18,8 @@ namespace kaizermud::game {
     };
 
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<EquipSlot>>> equipRegistry;
-    OpResult<> registerEquip(std::shared_ptr<EquipSlot> entry);
+    extern std::unordered_map<std::string, std::unordered_map<std::string, EquipSlot*>> equipRegistry;
+    OpResult<> registerEquip(EquipSlot* entry);
 
 
 

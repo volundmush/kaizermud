@@ -6,7 +6,7 @@
 #include <boost/beast/core/buffers_to_string.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
 
-namespace kaizermud::thermite {
+namespace kaizer {
     using namespace boost::asio::experimental::awaitable_operators;
     LinkManager::LinkManager(boost::asio::io_context& ioc, boost::asio::ip::tcp::endpoint ep)
             : linkChan(ioc, 50), endpoint(std::move(ep)), is_stopped(false) {}
@@ -60,7 +60,10 @@ namespace kaizermud::thermite {
         try {
             co_await (runReader() || runWriter());
         } catch (const boost::system::system_error& e) {
+            std::cerr << "Error in Link::run(): " << e.what() << std::endl;
             // Handle exceptions here if necessary
+        } catch(...) {
+            std::cerr << "Unknown error in Link::run()" << std::endl;
         }
         co_return;
     }
@@ -75,13 +78,13 @@ namespace kaizermud::thermite {
         boost::json::object capabilities = v["capabilities"].as_object();
 
         // Do something with id, addr, and capabilities
-        auto it = kaizermud::game::state::connections.find(id);
-        if (it == kaizermud::game::state::connections.end()) {
+        auto it = state::connections.find(id);
+        if (it == state::connections.end()) {
             // Create a new ClientConnection
-            spsc_channel<boost::json::value> clientChan(co_await boost::asio::this_coro::executor, 50);
-            auto cc = std::make_shared<kaizermud::net::ClientConnection>(linkManager, id, std::move(clientChan));
-            kaizermud::game::state::connections[id] = cc;
-            kaizermud::game::state::pending_connections.insert(id);
+            mpmc_channel<boost::json::value> clientChan(co_await boost::asio::this_coro::executor, 50);
+            auto cc = std::make_shared<ClientConnection>(linkManager, id, std::move(clientChan));
+            state::connections[id] = cc;
+            state::pending_connections.insert(id);
         } else {
             // Update the existing ClientConnection
             auto& client_connection = it->second;
@@ -99,12 +102,12 @@ namespace kaizermud::thermite {
 
                 // Deserialize the JSON string
                 auto ws_str = boost::beast::buffers_to_string(buffer.data());
-                std::cout << "Received: " << ws_str << std::endl;
+                //std::cout << "Received: " << ws_str << std::endl;
                 auto json_data = boost::json::parse(ws_str);
                 boost::json::object j = json_data.as_object();
 
                 // Access the "kind" field in the JSON object
-                auto kind = j["kind"].as_string();
+                std::string kind = j["kind"].as_string().c_str();
 
                 // Implement your routing logic here
 
@@ -128,11 +131,11 @@ namespace kaizermud::thermite {
 
                 } else {
                     // Extract the "id" field from the JSON object
-                    uint64_t id = j["id"].as_uint64();
+                    uint64_t id = j["id"].as_int64();
 
                     // Look up the specific ClientConnection in the std::map
-                    auto it = kaizermud::game::state::connections.find(id);
-                    if (it != kaizermud::game::state::connections.end()) {
+                    auto it = state::connections.find(id);
+                    if (it != state::connections.end()) {
                         // Found the client connection
                         auto &client_connection = it->second;
 
@@ -140,14 +143,7 @@ namespace kaizermud::thermite {
                             boost::json::object capabilities = j["capabilities"].as_object();
                             client_connection->capabilities.deserialize(capabilities);
 
-                        } else if (kind == "client_line") {
-                            try {
-                                co_await client_connection->fromLink.async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
-                            } catch (const boost::system::system_error &e) {
-                                // Handle exceptions (e.g., WebSocket close or error)
-                            }
-
-                        } else if (kind == "client_gmcp") {
+                        } else if (kind == "client_data") {
                             try {
                                 co_await client_connection->fromLink.async_send(boost::system::error_code{}, j, boost::asio::use_awaitable);
                             } catch (const boost::system::system_error &e) {
@@ -163,7 +159,10 @@ namespace kaizermud::thermite {
                     }
                 }
             } catch (const boost::system::system_error &e) {
+                std::cout << "Link RunReader flopped at: " << e.what() << std::endl;
                 // Handle exceptions (e.g., WebSocket close or error)
+            } catch (...) {
+                std::cout << "Unknown error in Link RunReader" << std::endl;
             }
         }
         co_return;
@@ -182,10 +181,16 @@ namespace kaizermud::thermite {
                     // Send the message across the WebSocket
                     co_await conn.async_write(boost::asio::buffer(serialized_msg), boost::asio::use_awaitable);
                 } catch (const boost::system::system_error& e) {
+                    std::cout << "Link runWriter flopped 1: " << e.what() << std::endl;
                     // Handle exceptions (e.g., WebSocket close or error) when sending the message
+                } catch (...) {
+                    std::cout << "Unknown error in Link runWriter 1" << std::endl;
                 }
             } catch (const boost::system::system_error& e) {
+                std::cout << "Link runWriter flopped 2: " << e.what() << std::endl;
                 // Handle exceptions (e.g., error receiving the message from the channel)
+            } catch (...) {
+                std::cout << "Unknown error in Link runWriter 2" << std::endl;
             }
         }
         co_return;

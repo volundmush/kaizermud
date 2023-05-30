@@ -2,8 +2,8 @@
 #include "kaizermud/Components.h"
 #include "kaizermud/utils.h"
 
-namespace kaizermud::api {
-    using namespace kaizermud::components;
+namespace kaizer {
+    using namespace kaizer::components;
 
     // Administration
     void defaultAtCreate(entt::entity ent) {
@@ -19,6 +19,40 @@ namespace kaizermud::api {
 
     ApiCall<ObjectID> getID(defaultGetID);
 
+    Type* defaultGetType(entt::entity ent, std::string_view name) {
+        auto &info = registry.get<ObjectInfo>(ent);
+        auto it = info.types.find(std::string(name));
+        if(it == info.types.end()) {
+            return nullptr;
+        }
+        return it->second;
+    }
+
+    ApiCall<Type*, std::string_view> getType(defaultGetType);
+
+
+    OpResult<> defaultAddType(entt::entity ent, std::string_view key) {
+        if(key.empty()) {
+            return {false, "Key cannot be empty"};
+        }
+        auto k = std::string(key);
+        auto found = typeRegistry.find(k);
+        if(found == typeRegistry.end()) {
+            return {false, "Type does not exist"};
+        }
+        auto t = found->second;
+        auto &info = registry.get<ObjectInfo>(ent);
+        if(info.types.find(k) != info.types.end()) {
+            return {false, "Type already set"};
+        }
+        info.types[k] = t;
+        info.doSort();
+        t->onAdd(ent);
+        return {true, std::nullopt};
+    }
+
+    ApiCall<OpResult<>, std::string_view> addType(defaultAddType);
+
 
     // Strings
     OpResult<> defaultSetString(entt::entity ent, std::string_view key, std::string_view value) {
@@ -30,7 +64,7 @@ namespace kaizermud::api {
         }
 
         auto &sc = registry.get_or_emplace<Strings>(ent);
-        sc.data[std::string(key)] = utils::intern(value);
+        sc.data[std::string(key)] = intern(value);
         return {true, std::nullopt};
 
     }
@@ -137,15 +171,71 @@ namespace kaizermud::api {
 
     ApiCall<std::optional<std::reference_wrapper<const std::vector<entt::entity>>>, std::string_view> getReverseRelation(defaultGetReverseRelation);
 
+
+    OpResult<> defaultSetAspectPointer(entt::entity ent, Aspect* asp) {
+        auto &comp = registry.get_or_emplace<Aspects>(ent);
+
+        auto &slotData = comp.data[std::string(asp->getSlot())];
+        if(slotData) {
+            slotData->onRemove(ent);
+        }
+        slotData = asp;
+        slotData->onAdd(ent);
+        return {true, std::nullopt};
+    }
+
+    ApiCall<OpResult<>, Aspect*> setAspectPointer(defaultSetAspectPointer);
+
+
     // Aspects
+    Aspect* defaultGetAspect(entt::entity ent, std::string_view name) {
+        auto comp = registry.try_get<Aspects>(ent);
+        if(!comp) {
+            return nullptr;
+        }
+        auto it = comp->data.find(std::string(name));
+        if(it == comp->data.end()) {
+            return nullptr;
+        }
+        return it->second;
+    }
+
+    ApiCall<Aspect*, std::string_view> getAspect(defaultGetAspect);
+
+    std::set<std::string> defaultGetAspectSlots(entt::entity ent) {
+        auto &objinfo = registry.get<ObjectInfo>(ent);
+        std::set<std::string> out;
+        for(auto &type : objinfo.sortedTypes) {
+            auto aspectSlots = type->getAspectSlots();
+            out.insert(aspectSlots.begin(), aspectSlots.end());
+        }
+        return out;
+    }
+
+    ApiCall<std::set<std::string>> getAspectSlots(defaultGetAspectSlots);
+
     OpResult<> defaultSetAspect(entt::entity ent, std::string_view name, std::string_view value) {
         auto &objinfo = registry.get<ObjectInfo>(ent);
-        auto slots = game::getAspectSlots(objinfo.types);
-        auto it = slots.find(std::string(name));
-        if(it == slots.end()) {
+        auto slots = getAspectSlots(ent);
+        auto slotIt = slots.find(std::string(name));
+        if(slotIt == slots.end()) {
             return {false, "No such aspect slot"};
         }
-        return it->setAspect(ent, value);
+        auto s = *slotIt;
+
+        auto aspectsIt = aspectRegistry.find(s);
+        if(aspectsIt == aspectRegistry.end()) {
+            return {false, "No no aspects found for that slot."};
+        }
+
+        auto available = aspectsIt->second;
+
+        auto it = available.find(std::string(value));
+        if(it == available.end()) {
+            return {false, "No such aspect."};
+        }
+
+        return setAspectPointer(ent, it->second);
     }
 
     ApiCall<OpResult<>, std::string_view, std::string_view> setAspect(defaultSetAspect);

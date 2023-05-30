@@ -1,6 +1,6 @@
 #include "kaizermud/CallParameters.h"
 
-namespace kaizermud {
+namespace kaizer {
 
     CallParameters& CallParameters::setEntity(std::string_view name, entt::entity ent) {
         entities[std::string(name)] = ent;

@@ -2,7 +2,7 @@
 #include <chrono>
 #include <boost/asio/steady_timer.hpp>
 
-namespace kaizermud::game {
+namespace kaizer {
     using namespace std::chrono_literals;
 
     lua_CompileOptions compile_options{};
@@ -10,7 +10,8 @@ namespace kaizermud::game {
     namespace state {
         ObjectID lastInsertID{0};
         std::set<uint64_t> pending_connections, disconnected_connections;
-        std::unordered_map<uint64_t, std::shared_ptr<kaizermud::net::ClientConnection>> connections;
+        std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> connections;
+        std::unordered_map<ObjectID, std::shared_ptr<Session>> sessions;
     }
 
 
@@ -22,7 +23,7 @@ namespace kaizermud::game {
     }
 
 
-    boost::asio::awaitable<void> process_connections(const boost::asio::steady_timer::duration& deltaTime) {
+    boost::asio::awaitable<void> process_connections(double deltaTime) {
         // First, handle any disconnected connections.
         for (const auto &id : state::disconnected_connections) {
             auto it = state::connections.find(id);
@@ -53,13 +54,20 @@ namespace kaizermud::game {
         co_return;
     }
 
-    boost::asio::awaitable<void> process_tasks(const boost::asio::steady_timer::duration& deltaTime) {
+    boost::asio::awaitable<void> process_sessions(double deltaTime) {
+
         co_return;
     }
 
-    boost::asio::awaitable<void> heartbeat(const boost::asio::steady_timer::duration& deltaTime) {
+    boost::asio::awaitable<void> process_tasks(double deltaTime) {
+        co_return;
+    }
+
+    boost::asio::awaitable<void> heartbeat(double deltaTime) {
         co_await process_connections(deltaTime);
         co_await process_tasks(deltaTime);
+
+        co_await process_sessions(deltaTime);
 
         co_return;
     }
@@ -78,9 +86,11 @@ namespace kaizermud::game {
             co_await timer.async_wait(boost::asio::use_awaitable);
             auto currentTime = boost::asio::steady_timer::clock_type::now();
             auto deltaTime = currentTime - previousTime;
+            double deltaTimeInSeconds = std::chrono::duration<double>(deltaTime).count();
             previousTime = currentTime;
-            co_await heartbeat(deltaTime);
+            co_await heartbeat(deltaTimeInSeconds);
         }
+        // todo: figure out a shutdown / restart routine.
         co_return;
     }
 
@@ -215,6 +225,6 @@ namespace kaizermud::game {
 
 }
 
-kaizermud::game::Task::~Task() {
+kaizer::Task::~Task() {
     lua_close(L);
 }

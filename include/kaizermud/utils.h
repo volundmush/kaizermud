@@ -10,7 +10,7 @@ constexpr unsigned int operator"" _hash(const char *str, size_t) {
     return string_hash(str);
 }
 
-namespace kaizermud::utils {
+namespace kaizer {
 
     extern std::unordered_set<std::string> stringPool;
 
@@ -51,6 +51,10 @@ namespace kaizermud::utils {
         }
         return std::nullopt;
     }
+
+    OpResult<> hashPassword(std::string_view password);
+
+    OpResult<> checkPassword(std::string_view hash, std::string_view check);
 
 
 }

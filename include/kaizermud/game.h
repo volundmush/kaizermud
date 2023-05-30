@@ -15,7 +15,7 @@
 #include "LuaBridge/LuaBridge.h"
 #include "kaizermud/Lua.h"
 
-namespace kaizermud::game {
+namespace kaizer {
 
     class Task {
     public:
@@ -57,17 +57,19 @@ namespace kaizermud::game {
     };
 
     ObjectID getNextAvailableID();
-    boost::asio::awaitable<void> process_connections(const boost::asio::steady_timer::duration& deltaTime);
-    boost::asio::awaitable<void> process_tasks(const boost::asio::steady_timer::duration& deltaTime);
+    boost::asio::awaitable<void> process_connections(double deltaTime);
+    boost::asio::awaitable<void> process_tasks(double deltaTime);
+    boost::asio::awaitable<void> process_sessions(double deltaTime);
     boost::asio::awaitable<void> load();
-    boost::asio::awaitable<void> heartbeat(const boost::asio::steady_timer::duration& deltaTime);
+    boost::asio::awaitable<void> heartbeat(double deltaTime);
     boost::asio::awaitable<void> run();
 
 
     namespace state {
         extern std::set<int64_t> free_ids; // this will store like 100 vector slots that are currently unused to reduce scans.
         extern std::set<uint64_t> pending_connections, disconnected_connections;
-        extern std::unordered_map<uint64_t, std::shared_ptr<kaizermud::net::ClientConnection>> connections;
+        extern std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> connections;
+        extern std::unordered_map<ObjectID, std::shared_ptr<Session>> sessions;
     }
 
 }

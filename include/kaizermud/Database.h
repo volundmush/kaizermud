@@ -3,7 +3,7 @@
 #include "kaizermud/base.h"
 #include "SQLiteCpp/SQLiteCpp.h"
 
-namespace kaizermud::db {
+namespace kaizer {
     extern std::unordered_map<std::string, std::shared_ptr<SQLite::Database>> extraDB;
 
     extern std::vector<std::string> schema;

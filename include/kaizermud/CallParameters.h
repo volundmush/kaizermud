@@ -2,7 +2,7 @@
 
 #include "kaizermud/base.h"
 
-namespace kaizermud {
+namespace kaizer {
     /*
      * @brief A set of parameters to pass to a command. Inspired by Python **kwargs
      *

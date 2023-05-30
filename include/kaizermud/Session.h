@@ -2,7 +2,7 @@
 #include "kaizermud/ClientConnection.h"
 #include "Message.h"
 
-namespace kaizermud::game {
+namespace kaizer {
     // The Session class represents a specific session of play while a Character is online.
     // A Session is created when a Character logs in, and is destroyed when the Character logs out.
     // It acts as a middle-man and also a repository for data relevant to just this session, and
@@ -12,13 +12,43 @@ namespace kaizermud::game {
     // multiple locations.
     class Session {
     public:
-        explicit Session(entt::entity ent);
+        Session(ObjectID id, entt::entity ent);
         virtual ~Session() = default;
+
+        virtual void start();
+        virtual void end();
 
         // Send a message to the linked connections.
         virtual void send(const Message &msg);
         virtual void atObjectDeleted(entt::entity ent);
+
+        // Add a connection to this session.
+        virtual void addConnection(uint64_t connID);
+        virtual void addConnection(const std::shared_ptr<ClientConnection>& conn);
+        virtual void onAddConnection(const std::shared_ptr<ClientConnection>& conn);
+        // Remove a connection from this session.
+        virtual void removeConnection(uint64_t connID);
+        virtual void removeConnection(const std::shared_ptr<ClientConnection>& conn);
+        virtual void onRemoveConnection(const std::shared_ptr<ClientConnection>& conn);
+        // Remove all connections from this session.
+        virtual void removeAllConnections();
+
+        virtual void onLinkDead();
+
+        virtual void onNetworkDisconnected(uint64_t connId);
+
+        virtual void changePuppet(entt::entity ent);
+
+        virtual void handleText(const std::string& text);
+
+        virtual void sendText(std::string_view text);
+
+        virtual void onHeartbeat(double deltaTime);
+
+
     protected:
+        // The ID of the character is the ID of the session.
+        ObjectID id;
         // The character this Session is linked to.
         entt::entity character;
         // The object this session is currently controlling. That's USUALLY going to be the Character,
@@ -26,7 +56,12 @@ namespace kaizermud::game {
         // the puppet.
         entt::entity puppet;
         // This is a map of all the connections that are currently linked to this session.
-        std::unordered_map<uint64_t, std::weak_ptr<kaizermud::net::ClientConnection>> clients;
+        std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> clients;
+
+        std::chrono::steady_clock::time_point lastActivity{};
+        std::chrono::system_clock::time_point created{};
+
+        std::string outText;
 
     };
 }

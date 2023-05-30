@@ -46,7 +46,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    kaizermud::startup(endpoint);
+    kaizer::startup(endpoint);
 
     return 0;
 }

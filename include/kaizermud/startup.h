@@ -2,7 +2,7 @@
 #include "base.h"
 #include <boost/asio.hpp>
 
-namespace kaizermud {
+namespace kaizer {
 
     extern std::vector<std::function<boost::asio::awaitable<void>()>> services;
 

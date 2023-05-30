@@ -6,7 +6,7 @@
 
 int main(int argc, char* argv[]) {
     std::cout << "starting program..." << std::endl;
-    kaizermud::game::Task task;
+    kaizer::Task task;
 
     // Load the Lua code
     const char* lua_code = R"(
@@ -18,10 +18,10 @@ int main(int argc, char* argv[]) {
         end
     )";
 
-    kaizermud::game::LuaCode code(lua_code);
+    kaizer::LuaCode code(lua_code);
     code.compile();
 
-    if (code.state == kaizermud::game::LuaCode::State::ERROR) {
+    if (code.state == kaizer::LuaCode::State::ERROR) {
         std::cerr << "Lua Compilation error: " << code.bytecode << std::endl;
         return 1;
     }
@@ -41,20 +41,20 @@ int main(int argc, char* argv[]) {
         task.run();
 
         switch (task.state) {
-            case kaizermud::game::Task::State::RUNNING:
-            case kaizermud::game::Task::State::WAITING:
-            case kaizermud::game::Task::State::INTERRUPTED:
+            case kaizer::Task::State::RUNNING:
+            case kaizer::Task::State::WAITING:
+            case kaizer::Task::State::INTERRUPTED:
                 // Get the value of "counter" from the Lua state
                 lua_getglobal(task.L, "counter");
                 counter = lua_tointeger(task.L, -1);
                 lua_pop(task.L, 1);
                 std::cout << "Task " << i + 1 << ": Counter = " << counter << std::endl;
                 break;
-            case kaizermud::game::Task::State::FINISHED:
+            case kaizer::Task::State::FINISHED:
                 std::cout << "Task " << i + 1 << ": Finished" << std::endl;
                 running = false;
                 break;
-            case kaizermud::game::Task::State::ERROR:
+            case kaizer::Task::State::ERROR:
                 std::cerr << "Task " << i + 1 << ": Error: " << task.err << std::endl;
                 running = false;
                 break;

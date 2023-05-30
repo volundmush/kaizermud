@@ -1,7 +1,7 @@
 #include "kaizermud/Equip.h"
 #include "kaizermud/utils.h"
 
-namespace kaizermud::game {
+namespace kaizer {
 
     // EquipSlot
     void EquipSlot::equip(entt::entity ent) {
@@ -21,9 +21,9 @@ namespace kaizermud::game {
     }
 
     // EquipEntry
-    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<EquipSlot>>> equipRegistry;
+    std::unordered_map<std::string, std::unordered_map<std::string, EquipSlot*>> equipRegistry;
 
-    OpResult<> registerEquip(std::shared_ptr<EquipSlot> entry) {
+    OpResult<> registerEquip(EquipSlot* entry) {
         if(entry->objType.empty()) {
             return {false, "EquipEntry objType cannot be empty"};
         }

@@ -4,11 +4,11 @@
 #include "kaizermud/Api.h"
 #include "kaizermud/utils.h"
 
-namespace kaizermud {
+namespace kaizer {
     entt::registry registry;
     std::unordered_map<ObjectID, entt::entity> entities;
 
-    OpResult<entt::entity> createEntity(std::string_view objType, std::string_view subType, std::optional<ObjectID> id) {
+    OpResult<entt::entity> createEntity(std::optional<ObjectID> id) {
 
         ObjectID newID;
 
@@ -18,16 +18,14 @@ namespace kaizermud {
             }
             newID = id.value();
         } else {
-            newID = game::getNextAvailableID();
+            newID = getNextAvailableID();
         }
 
         auto ent = registry.create();
         auto &info = registry.get_or_emplace<components::ObjectInfo>(ent);
-        info.types.first = utils::intern(objType);
-        info.types.second = utils::intern(subType);
         info.id = newID;
         entities[newID] = ent;
-        api::atCreate(ent);
+        atCreate(ent);
         return {ent, std::nullopt};
     }
 }

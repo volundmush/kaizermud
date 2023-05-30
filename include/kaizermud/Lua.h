@@ -14,7 +14,7 @@
 #include "luacode.h"
 #include "LuaBridge/LuaBridge.h"
 
-namespace kaizermud::game {
+namespace kaizer {
     extern lua_CompileOptions compile_options;
 
     struct LuaCode {

@@ -2,9 +2,10 @@
 #include <functional>
 #include "kaizermud/base.h"
 #include "kaizermud/Components.h"
+#include "kaizermud/Types.h"
 
 
-namespace kaizermud::api {
+namespace kaizer {
 
     // Handy-ass template for holding onto and executing API calls by specificity.
     template <typename ResultType, typename... Args>
@@ -27,8 +28,8 @@ namespace kaizermud::api {
         ResultType execute(entt::entity e, Args... args) {
             auto &info = registry.get<components::ObjectInfo>(e);
             // check by specific type, then by general type...
-            for(const auto &type : {info.types.second, info.types.first}) {
-                auto it = overrides.find(std::string(type));
+            for(const auto &type : info.sortedTypes) {
+                auto it = overrides.find(std::string(type->getKey()));
                 if(it != overrides.end()) {
                     return it->second(e, args...);
                 }
@@ -44,6 +45,15 @@ namespace kaizermud::api {
     // Administration
     extern ApiCall<void> atCreate;
     void defaultAtCreate(entt::entity ent);
+
+    extern ApiCall<Type*, std::string_view> getType;
+    Type* defaultGetType(entt::entity ent, std::string_view name);
+
+    extern ApiCall<OpResult<>, std::string_view> addType;
+    OpResult<> defaultAddType(entt::entity ent, std::string_view key);
+
+    extern ApiCall<OpResult<>, std::string_view> removeType;
+    OpResult<> defaultRemoveType(entt::entity ent, std::string_view key);
 
     // Info
     extern ApiCall<ObjectID> getID;
@@ -70,9 +80,15 @@ namespace kaizermud::api {
 
     // Aspects
     extern ApiCall<OpResult<>, std::string_view, std::string_view> setAspect;
-    extern ApiCall<std::shared_ptr<game::Aspect>, std::string_view> getAspect;
+    extern ApiCall<Aspect*, std::string_view> getAspect;
+    Aspect* defaultGetAspect(entt::entity ent, std::string_view name);
+
+    extern ApiCall<OpResult<>, Aspect*> setAspectPointer;
+    OpResult<> defaultSetAspectPointer(entt::entity ent, Aspect* asp);
 
     OpResult<> defaultSetAspect(entt::entity ent, std::string_view name, std::string_view value);
-    std::shared_ptr<game::Aspect> defaultGetAspect(entt::entity ent, std::string_view name);
+
+    extern ApiCall<std::set<std::string>> getAspectSlots;
+    std::set<std::string> defaultGetAspectSlots(entt::entity ent);
 
 }

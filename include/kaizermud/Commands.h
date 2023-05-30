@@ -2,41 +2,22 @@
 #include "kaizermud/base.h"
 
 
-namespace kaizermud::game {
+namespace kaizer {
 
-    class CommandHandler;
     class Command {
     public:
-        Command(CommandHandler *handler);
-        virtual OpResult<> canExecute();
-        virtual void execute();
-        virtual void parse(std::string_view input);
-        virtual int priority();
-        virtual bool isAvailable();
+        std::string objType, subType, cmdName;
+        virtual OpResult<> canExecute(entt::entity ent);
+        virtual void execute(entt::entity ent, std::string_view input);
+        virtual int getPriority(entt::entity ent);
+        virtual bool isAvailable(entt::entity ent);
         virtual std::string getHelp();
-        virtual void reset();
-        virtual bool match(std::string_view input);
-
+        virtual bool match(entt::entity ent, std::string_view input);
     protected:
-        CommandHandler *handler;
-        std::unordered_map<std::string, std::string> args;
+        int priority{0};
     };
 
-    struct CommandEntry {
-        std::string objType, cmdName;
-        std::function<std::unique_ptr<Command>(CommandHandler*)> ctor;
-    };
+    extern std::unordered_map<std::string, std::unordered_map<std::string, Command*>> commandRegistry;
+    OpResult<> registerCommand(Command* entry);
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, CommandEntry>> commandRegistry;
-    OpResult<> registerCommand(CommandEntry entry);
-
-    class CommandHandler {
-    public:
-
-        std::vector<std::unique_ptr<Command>> commands;
-        bool execute(std::string_view input);
-        void load();
-    protected:
-        bool loaded;
-    };
 }

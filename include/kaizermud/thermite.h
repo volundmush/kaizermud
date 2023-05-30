@@ -7,7 +7,7 @@
 #include <string>
 
 
-namespace kaizermud::thermite {
+namespace kaizer {
 
     // This class manages a repeating connector to Thermite. It is launched via co_spawn
     // using run() as its entry point, and it will connect to Thermite using the provided
@@ -16,7 +16,8 @@ namespace kaizermud::thermite {
     // it will attempt to reconnect endlessly until it re-establishes connection.
     class LinkManager {
     public:
-        spsc_channel<boost::json::value> linkChan;
+        mpmc_channel<boost::json::value> linkChan;
+
         explicit LinkManager(boost::asio::io_context& ioc, boost::asio::ip::tcp::endpoint ep);
 
         boost::asio::awaitable<void> run();

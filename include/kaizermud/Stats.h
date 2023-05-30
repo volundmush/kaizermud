@@ -3,15 +3,13 @@
 #include "SQLiteCpp/SQLiteCpp.h"
 
 
-namespace kaizermud::game {
-
-    class StatHandler;
+namespace kaizer {
 
     // Base type for all Stats. This implements the base API.
     class Stat {
     public:
         virtual ~Stat() = default;
-        std::string_view objType, name, saveKey;
+        std::string objType, name, saveKey;
         virtual void set(entt::entity ent, double value) = 0;
         virtual void modify(entt::entity ent, double value) = 0;
         [[nodiscard]] virtual double get(entt::entity ent);
@@ -19,9 +17,9 @@ namespace kaizermud::game {
 
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Stat>>> statRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, Stat*>> statRegistry;
 
-    OpResult<> registerStat(std::shared_ptr<Stat> entry);
+    OpResult<> registerStat(Stat* entry);
 
 
 }

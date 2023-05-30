@@ -4,11 +4,13 @@
 #include <boost/asio/experimental/channel.hpp>
 #include <boost/asio/experimental/concurrent_channel.hpp>
 #include <optional>
+#include <chrono>
 #include "entt/entt.hpp"
 
-namespace kaizermud {
-    template<typename T>
-    using spsc_channel = boost::asio::experimental::channel<void(boost::system::error_code, T)>;
+namespace kaizer {
+
+    class ClientConnection;
+    class Session;
 
     template<typename T>
     using mpmc_channel = boost::asio::experimental::concurrent_channel<void(boost::system::error_code, T)>;
@@ -22,7 +24,7 @@ namespace kaizermud {
     extern entt::registry registry;
     extern std::unordered_map<ObjectID, entt::entity> entities;
 
-    OpResult<entt::entity> createEntity(std::string_view objType, std::string_view subType, std::optional<ObjectID> id = std::nullopt);
+    OpResult<entt::entity> createEntity(std::optional<ObjectID> id = std::nullopt);
 
 
 }

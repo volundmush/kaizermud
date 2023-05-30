@@ -5,34 +5,22 @@
 #include "SQLiteCpp/SQLiteCpp.h"
 #include "kaizermud/CallParameters.h"
 
-namespace kaizermud::game {
+namespace kaizer {
 
-    class Aspect {
-    public:
-        std::string_view objType, slotType, saveKey, name;
+    struct Aspect {
+        [[nodiscard]] virtual std::string_view getSlot() = 0;
+        [[nodiscard]] virtual std::string_view getKey() = 0;
         virtual void onRemove(entt::entity ent);
         virtual void onAdd(entt::entity ent);
         virtual void onLoad(entt::entity ent);
+        [[nodiscard]] virtual OpResult<> canSet(entt::entity ent);
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Aspect>>>> aspectRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, Aspect*>> aspectRegistry;
 
-    OpResult<> registerAspect(std::shared_ptr<Aspect> entry);
+    OpResult<> registerAspect(Aspect* entry);
 
-    class AspectSlot : public CallParameters {
-    public:
-        std::string_view objType, slotType;
-        [[nodiscard]] virtual OpResult<> setAspect(entt::entity ent, std::string_view saveKey, bool isLoading = false);
-        [[nodiscard]] virtual OpResult<> atPostLoad(entt::entity ent);
-    };
-
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>> aspectSlotRegistry;
-
-    OpResult<> registerAspectSlot(std::shared_ptr<AspectSlot> entry);
-
-    extern std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, std::shared_ptr<AspectSlot>>>> aspectSlotsCache;
-
-    std::unordered_map<std::string, std::shared_ptr<AspectSlot>>& getAspectSlots(const std::pair<std::string_view, std::string_view>& objType);
+    extern std::unordered_map<std::string, Aspect*> aspectSlotDefaults;
 
 
 }

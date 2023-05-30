@@ -4,12 +4,10 @@
 #include <boost/json.hpp>
 
 
-namespace kaizermud::game {
+namespace kaizer {
     struct Message {
-        std::string msgType;
+        std::string cmd;
         boost::json::array args;
         boost::json::object kwargs;
-        boost::json::object options;
-        boost::json::array render() const;
     };
 }

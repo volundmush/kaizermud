@@ -161,7 +161,7 @@ namespace kaizer {
     void ClientConnection::sendText(const std::string &text) {
         boost::json::object jobj;
         jobj["kind"] = "client_data";
-        jobj["id"] = this->conn_id;
+        jobj["id"] = this->connID;
 
         boost::json::array jarr;
         boost::json::object jobj2;
@@ -220,7 +220,7 @@ namespace kaizer {
         onLogin();
     }
 
-    void onLogin() {
+    void ClientConnection::onLogin() {
 
     }
 

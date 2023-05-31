@@ -1,6 +1,7 @@
 #include "kaizermud/game.h"
 #include <chrono>
 #include <boost/asio/steady_timer.hpp>
+#include "kaizermud/Systems.h"
 
 namespace kaizer {
     using namespace std::chrono_literals;
@@ -22,53 +23,12 @@ namespace kaizer {
         return state::lastInsertID;
     }
 
-
-    boost::asio::awaitable<void> process_connections(double deltaTime) {
-        // First, handle any disconnected connections.
-        for (const auto &id : state::disconnected_connections) {
-            auto it = state::connections.find(id);
-            if (it != state::connections.end()) {
-                auto& conn = it->second;
-                conn->onNetworkDisconnected();
-                state::connections.erase(it);
-            }
-        }
-        state::disconnected_connections.clear();
-
-        // Second, welcome any new connections!
-        for(const auto& id : state::pending_connections) {
-            auto it = state::connections.find(id);
-            if (it != state::connections.end()) {
-                auto& conn = it->second;
-                // Need a proper welcoming later....
-                conn->onWelcome();
-            }
-        }
-        state::pending_connections.clear();
-
-        // Next, we must handle the heartbeat routine for each connection.
-        for(auto& [id, conn] : state::connections) {
-            conn->onHeartbeat(deltaTime);
-        }
-
-        co_return;
-    }
-
-    boost::asio::awaitable<void> process_sessions(double deltaTime) {
-
-        co_return;
-    }
-
-    boost::asio::awaitable<void> process_tasks(double deltaTime) {
-        co_return;
-    }
-
     boost::asio::awaitable<void> heartbeat(double deltaTime) {
-        co_await process_connections(deltaTime);
-        co_await process_tasks(deltaTime);
 
-        co_await process_sessions(deltaTime);
-
+        for(auto &sys : sortedSystems) {
+            if(co_await sys->shouldRun(deltaTime))
+                co_await sys->run(deltaTime);
+        }
         co_return;
     }
 

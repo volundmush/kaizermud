@@ -8,7 +8,6 @@ namespace kaizer {
 
     }
 
-
     bool EquipSlot::isAvailable(entt::entity ent) {
         return true;
     }
@@ -21,9 +20,9 @@ namespace kaizer {
     }
 
     // EquipEntry
-    std::unordered_map<std::string, std::unordered_map<std::string, EquipSlot*>> equipRegistry;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<EquipSlot>>> equipRegistry;
 
-    OpResult<> registerEquip(EquipSlot* entry) {
+    OpResult<> registerEquip(std::shared_ptr<EquipSlot> entry) {
         if(entry->objType.empty()) {
             return {false, "EquipEntry objType cannot be empty"};
         }

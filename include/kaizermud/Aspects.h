@@ -16,11 +16,11 @@ namespace kaizer {
         [[nodiscard]] virtual OpResult<> canSet(entt::entity ent);
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, Aspect*>> aspectRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Aspect>>> aspectRegistry;
 
-    OpResult<> registerAspect(Aspect* entry);
+    OpResult<> registerAspect(std::shared_ptr<Aspect> entry);
 
-    extern std::unordered_map<std::string, Aspect*> aspectSlotDefaults;
+    extern std::unordered_map<std::string, std::shared_ptr<Aspect>> aspectSlotDefaults;
 
 
 }

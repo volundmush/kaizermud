@@ -45,7 +45,7 @@ namespace kaizer {
         if(info.types.find(k) != info.types.end()) {
             return {false, "Type already set"};
         }
-        info.types[k] = t;
+        info.types[k] = t.get();
         info.doSort();
         t->onAdd(ent);
         return {true, std::nullopt};
@@ -235,9 +235,57 @@ namespace kaizer {
             return {false, "No such aspect."};
         }
 
-        return setAspectPointer(ent, it->second);
+        return setAspectPointer(ent, it->second.get());
     }
 
     ApiCall<OpResult<>, std::string_view, std::string_view> setAspect(defaultSetAspect);
+
+    // Commands
+    std::vector<std::pair<std::string, Command*>> defaultGetSortedCommands(entt::entity ent) {
+        auto &cache = registry.get_or_emplace<CommandCache>(ent);
+        if(!cache.sortedCommands.empty())
+            // Hooray, the cache exists, so we'll use it.
+            return cache.sortedCommands;
+        // The cache doesn't exist so we'll have to create it.
+
+        auto commands = getCommands(ent);
+        return cache.sortedCommands;
+    }
+
+    ApiCall<std::vector<std::pair<std::string, Command*>>> getSortedCommands(defaultGetSortedCommands);
+
+    std::unordered_map<std::string, Command*> defaultGetCommands(entt::entity ent) {
+        auto &cache = registry.get_or_emplace<CommandCache>(ent);
+        if (!cache.commands.empty())
+            // Hooray, the cache exists, so we'll use it.
+            return cache.commands;
+        // The cache doesn't exist so we'll have to create it.
+        auto &objinfo = registry.get<ObjectInfo>(ent);
+        auto &out = cache.commands;
+        for (auto &type: objinfo.sortedTypes) {
+            auto commands = commandRegistry.find(std::string(type->getKey()));
+            if (commands == commandRegistry.end())
+                continue;
+            for (auto &[key, cmd]: commands->second) {
+                out[key] = cmd.get();
+            }
+        }
+        cache.sortCommands();
+        return out;
+    }
+
+    ApiCall<std::unordered_map<std::string, Command*>> getCommands(defaultGetCommands);
+
+    // Communication
+    OpResult<> defaultSendText(entt::entity ent, std::string_view text) {
+        auto session = registry.try_get<components::SessionHolder>(ent);
+        if(!session) {
+            return {false, "No session."};
+        }
+        session->data->sendText("I don't understand that command.\n");
+        return {true, std::nullopt};
+    }
+
+    ApiCall<OpResult<>, std::string_view> sendText(defaultSendText);
 
 }

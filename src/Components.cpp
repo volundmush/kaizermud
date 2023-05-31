@@ -28,6 +28,18 @@ namespace kaizer::components {
         return ::kaizer::checkPassword(password, check);
     }
 
+    void CommandCache::sortCommands() {
+        sortedCommands.clear();
+        sortedCommands.reserve(commands.size());
+        for (auto& [key, command] : commands) {
+            sortedCommands.emplace_back(key, command);
+        }
+        std::sort(sortedCommands.begin(), sortedCommands.end(), [](auto& a, auto& b) {
+            return a.second->getPriority() < b.second->getPriority();
+        });
+
+    }
+
 
 
 }

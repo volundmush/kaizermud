@@ -5,6 +5,7 @@
 #include "kaizermud/Equip.h"
 #include "kaizermud/Session.h"
 #include "kaizermud/Types.h"
+#include "kaizermud/Commands.h"
 
 namespace kaizer::components {
 
@@ -70,6 +71,17 @@ namespace kaizer::components {
         // 0 is no session, 1 is main puppet, 2 is sub puppet
         uint8_t sessionMode{0};
         std::shared_ptr<Session> data;
+    };
+
+    struct CommandCache {
+        std::unordered_map<std::string, Command*> commands{};
+        std::vector<std::pair<std::string, Command*>> sortedCommands{};
+        void sortCommands();
+    };
+
+
+    struct PendingCommand {
+        std::string input;
     };
 
 }

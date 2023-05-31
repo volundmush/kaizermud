@@ -91,4 +91,15 @@ namespace kaizer {
     extern ApiCall<std::set<std::string>> getAspectSlots;
     std::set<std::string> defaultGetAspectSlots(entt::entity ent);
 
+    // Commands
+    extern ApiCall<std::vector<std::pair<std::string, Command*>>> getSortedCommands;
+    std::vector<std::pair<std::string, Command*>> defaultGetSortedCommands(entt::entity ent);
+
+    extern ApiCall<std::unordered_map<std::string, Command*>> getCommands;
+    std::unordered_map<std::string, Command*> defaultGetCommands(entt::entity ent);
+
+    // Communication
+    extern ApiCall<OpResult<>, std::string_view> sendText;
+    OpResult<> defaultSendText(entt::entity ent, std::string_view text);
+
 }

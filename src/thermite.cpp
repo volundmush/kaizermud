@@ -5,6 +5,7 @@
 #include <utility>
 #include <boost/beast/core/buffers_to_string.hpp>
 #include <boost/asio/experimental/awaitable_operators.hpp>
+#include "spdlog/spdlog.h"
 
 namespace kaizer {
     using namespace boost::asio::experimental::awaitable_operators;
@@ -21,6 +22,7 @@ namespace kaizer {
                 do_standoff = false;
             }
             try {
+                spdlog::info("LinkManager: Connecting to {}:{}...", endpoint.address().to_string(), endpoint.port());
                 // Create a new TCP socket
                 boost::beast::websocket::stream<boost::beast::tcp_stream> ws(co_await boost::asio::this_coro::executor);
 
@@ -36,11 +38,12 @@ namespace kaizer {
                 Link link(*this, ws);
 
                 // Run the Link
+                spdlog::info("LinkManager: Link established! Running Link...");
                 co_await link.run();
 
             } catch (const boost::system::system_error& error) {
                 // If there was an error, handle it (e.g., log the error message)
-                std::cerr << "Error in LinkManager::run(): " << error.what() << std::endl;
+                spdlog::error("Error in LinkManager::run(): {}", error.what());
 
                 // You might want to add a delay before attempting to reconnect, e.g.,
                 do_standoff = true;
@@ -60,10 +63,10 @@ namespace kaizer {
         try {
             co_await (runReader() || runWriter());
         } catch (const boost::system::system_error& e) {
-            std::cerr << "Error in Link::run(): " << e.what() << std::endl;
+            spdlog::error("Error in Link::run(): {}", e.what());
             // Handle exceptions here if necessary
         } catch(...) {
-            std::cerr << "Unknown error in Link::run()" << std::endl;
+            spdlog::error("Unknown error in Link::run()");
         }
         co_return;
     }
@@ -114,12 +117,13 @@ namespace kaizer {
                 if (kind == "client_list") {
                     // This message is sent by Thermite when the game establishes a fresh connection with it.
                     // It should be the first thing a Link sees.
-
+                    spdlog::info("Link: Received client_list message");
                     // Get the "data" object
                     boost::json::object data = j["data"].as_object();
 
                     // Iterate over the contents of the "data" object
                     for (const auto &entry : data) {
+                        spdlog::debug("Link: Processing client_list entry: {}", boost::json::serialize(entry.value()));
                         boost::json::object v = entry.value().as_object();
                         co_await createUpdateClient(v);
                     }
@@ -127,6 +131,7 @@ namespace kaizer {
                 } else if (kind == "client_ready") {
                     // This message is sent by Thermite when a new client has connected.
                     boost::json::object data = j["protocol"].as_object();
+                    spdlog::debug("Link: Received client_ready message: {}", boost::json::serialize(data));
                     co_await createUpdateClient(data);
 
                 } else {
@@ -141,6 +146,7 @@ namespace kaizer {
 
                         if (kind == "client_capabilities") {
                             boost::json::object capabilities = j["capabilities"].as_object();
+                            spdlog::debug("Link: Received client_capabilities message: {}", boost::json::serialize(capabilities));
                             client_connection->capabilities.deserialize(capabilities);
 
                         } else if (kind == "client_data") {
@@ -151,18 +157,20 @@ namespace kaizer {
                             }
 
                         } else if (kind == "client_disconnected") {
-                            // worrying about this later...
+                            spdlog::info("Link: Received client_disconnected message");
+                            state::disconnected_connections.insert(id);
                         }
                     } else {
+                        spdlog::info("Link: Received message for unknown client: {}", id);
                         // Handle the case when the client is not found in the map
                         // ...
                     }
                 }
             } catch (const boost::system::system_error &e) {
-                std::cout << "Link RunReader flopped at: " << e.what() << std::endl;
+                spdlog::error("Link RunReader flopped at: {}", e.what());
                 // Handle exceptions (e.g., WebSocket close or error)
             } catch (...) {
-                std::cout << "Unknown error in Link RunReader" << std::endl;
+                spdlog::error("Unknown error in Link RunReader");
             }
         }
         co_return;
@@ -177,20 +185,21 @@ namespace kaizer {
                 try {
                     // Serialize the JSON message to text
                     std::string serialized_msg = boost::json::serialize(message);
+                    spdlog::info("Link runWriter(): Sending message: {}", serialized_msg);
 
                     // Send the message across the WebSocket
                     co_await conn.async_write(boost::asio::buffer(serialized_msg), boost::asio::use_awaitable);
                 } catch (const boost::system::system_error& e) {
-                    std::cout << "Link runWriter flopped 1: " << e.what() << std::endl;
+                    spdlog::error("Link runWriter flopped 1: {}", e.what());
                     // Handle exceptions (e.g., WebSocket close or error) when sending the message
                 } catch (...) {
-                    std::cout << "Unknown error in Link runWriter 1" << std::endl;
+                    spdlog::error("Unknown error in Link runWriter 1");
                 }
             } catch (const boost::system::system_error& e) {
-                std::cout << "Link runWriter flopped 2: " << e.what() << std::endl;
+                spdlog::error("Link runWriter flopped 2: {}", e.what());
                 // Handle exceptions (e.g., error receiving the message from the channel)
             } catch (...) {
-                std::cout << "Unknown error in Link runWriter 2" << std::endl;
+                spdlog::error("Unknown error in Link runWriter 2");
             }
         }
         co_return;

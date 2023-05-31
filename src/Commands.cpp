@@ -1,48 +1,46 @@
 #include "kaizermud/Commands.h"
+#include "boost/algorithm/string.hpp"
+#include "spdlog/spdlog.h"
 
 namespace kaizer {
 
-    OpResult<> Command::canExecute(entt::entity ent) {
+    boost::regex command_regex(R"((?i)^(?<full>(?<cmd>[^\s\/]+)(?<switches>(\/\w+){0,})?(?:\s+(?<args>(?<lsargs>[^=]+)(?:=(?<rsargs>.*))?))?))");
+
+    OpResult<> Command::canExecute(entt::entity ent, std::unordered_map<std::string, std::string>& input) {
         return {true, std::nullopt};
     }
 
-    void Command::execute(entt::entity ent, std::string_view input) {
-
+    std::set<std::string> Command::getKeys() {
+        std::set<std::string> out;
+        out.insert(std::string(getCmdName()));
+        out.insert(getAliases().begin(), getAliases().end());
+        return out;
     }
 
-    int Command::getPriority(entt::entity ent) {
-        return priority;
+    void Command::execute(entt::entity ent, std::unordered_map<std::string, std::string>& input) {
+        spdlog::warn("Command {} not implemented", input["cmd"]);
     }
 
-    bool Command::isAvailable(entt::entity ent) {
-        return true;
-    }
+    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry;
 
-    std::string Command::getHelp() {
-        return "";
-    }
-
-    bool Command::match(entt::entity ent, std::string_view input) {
-        return false;
-    }
-
-    std::unordered_map<std::string, std::unordered_map<std::string, Command*>> commandRegistry;
-
-    OpResult<> registerCommand(Command* entry) {
-        if(entry->objType.empty()) {
-            return {false, "CommandEntry objType cannot be empty"};
+    OpResult<> registerCommand(std::shared_ptr<Command> entry) {
+        if(entry->getType().empty()) {
+            return {false, "CommandEntry Type cannot be empty"};
         }
-        if(entry->cmdName.empty()) {
+        if(entry->getCmdName().empty()) {
             return {false, "CommandEntry cmdName cannot be empty"};
         }
 
-        auto &reg = commandRegistry[entry->objType];
+        auto &reg = commandRegistry[std::string(entry->getType())];
 
-        if(reg.find(entry->cmdName) != reg.end()) {
-            return {false, "CommandEntry already registered"};
+        for(auto& key : entry->getKeys()) {
+            auto lower = boost::algorithm::to_lower_copy(std::string(key));
+            if(reg.find(lower) != reg.end()) {
+                return {false, "CommandEntry key already registered"};
+            }
+            reg[lower] = entry;
         }
 
-        reg[entry->cmdName] = entry;
         return {true, std::nullopt};
     }
 

@@ -17,9 +17,9 @@ namespace kaizer {
 
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, Stat*>> statRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Stat>>> statRegistry;
 
-    OpResult<> registerStat(Stat* entry);
+    OpResult<> registerStat(std::shared_ptr<Stat> entry);
 
 
 }

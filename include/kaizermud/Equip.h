@@ -18,8 +18,8 @@ namespace kaizer {
     };
 
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, EquipSlot*>> equipRegistry;
-    OpResult<> registerEquip(EquipSlot* entry);
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<EquipSlot>>> equipRegistry;
+    OpResult<> registerEquip(std::shared_ptr<EquipSlot> entry);
 
 
 

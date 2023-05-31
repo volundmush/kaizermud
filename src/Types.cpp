@@ -35,6 +35,6 @@ namespace kaizer {
     }
 
 
-    std::unordered_map<std::string, Type*> typeRegistry;
+    std::unordered_map<std::string, std::shared_ptr<Type>> typeRegistry;
 
 }

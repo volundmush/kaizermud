@@ -21,9 +21,9 @@ namespace kaizer {
         return {true, std::nullopt};
     }
 
-    std::unordered_map<std::string, std::unordered_map<std::string, Aspect*>> aspectRegistry;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Aspect>>> aspectRegistry;
 
-    OpResult<> registerAspect(Aspect* entry) {
+    OpResult<> registerAspect(std::shared_ptr<Aspect> entry) {
         if(entry->getSlot().empty()) {
             return {false, "Slot type cannot be empty"};
         }
@@ -36,7 +36,7 @@ namespace kaizer {
         return {true, std::nullopt};
     }
 
-    std::unordered_map<std::string, Aspect*> aspectSlotDefaults;
+    std::unordered_map<std::string, std::shared_ptr<Aspect>> aspectSlotDefaults;
 
 
 }

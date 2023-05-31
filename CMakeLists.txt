@@ -27,13 +27,14 @@ CPMAddPackage("gh:SRombauts/SQLiteCpp#3.3.0")
 CPMAddPackage("gh:kunitoki/LuaBridge3#3.0-rc3")
 CPMAddPackage("gh:skypjack/entt#v3.11.1")
 CPMAddPackage("gh:robinlinden/libsodium-cmake#master")
+CPMAddPackage("gh:gabime/spdlog#v1.11.0")
 
 SET(LUABRIDGE_TESTING OFF)
 SET(LUAU_BUILD_CLI OFF)
 SET(LUAU_BUILD_TESTS OFF)
 SET(LUAU_BUILD_BENCHMARKS OFF)
 
-find_package(Boost REQUIRED COMPONENTS system program_options json)
+find_package(Boost REQUIRED COMPONENTS system program_options json regex)
 find_package(SQLite3 REQUIRED)
 
 
@@ -51,6 +52,7 @@ SET(KAIZERMUD_INCLUDE_DIRS
         ${FMT_SOURCE_DIR}/include
         ${entt_SOURCE_DIR}/single_include
         ${sodium_SOURCE_DIR}/libsodium/src/libsodium/include
+        ${spdlog_SOURCE_DIR}/include
 )
 
 add_library(kaizermud ${KAIZERMUD_INCLUDE} ${KAIZERMUD_SRC})
@@ -58,7 +60,7 @@ target_include_directories(kaizermud PUBLIC ${KAIZERMUD_INCLUDE_DIRS})
 add_executable(kaizer apps/kaizer.cpp)
 target_include_directories(kaizer PUBLIC ${KAIZERMUD_INCLUDE_DIRS})
 
-set(KAIZERMUD_LINK_LIBRARIES ${Boost_LIBRARIES} Luau.VM Luau.Common Luau.Compiler SQLiteCpp sqlite3 fmt::fmt)
+set(KAIZERMUD_LINK_LIBRARIES ${Boost_LIBRARIES} Luau.VM Luau.Common Luau.Compiler SQLiteCpp sqlite3 fmt::fmt sodium)
 
 target_link_libraries(kaizermud ${KAIZERMUD_LINK_LIBRARIES})
 target_link_libraries(kaizer ${KAIZERMUD_LINK_LIBRARIES} kaizermud)

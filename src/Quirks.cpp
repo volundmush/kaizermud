@@ -18,9 +18,9 @@ namespace kaizer {
 
     }
 
-    std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, Quirk*>>> quirkRegistry;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Quirk>>>> quirkRegistry;
 
-    OpResult<> registerQuirk(Quirk* entry) {
+    OpResult<> registerQuirk(std::shared_ptr<Quirk> entry) {
         if(entry->objType.empty()) {
             return {false, "Object type cannot be empty"};
         }
@@ -37,10 +37,10 @@ namespace kaizer {
         return {true, std::nullopt};
     }
 
-    std::unordered_map<std::string, std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, Quirk*>>>> quirksCache;
+    std::unordered_map<std::string, std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, std::shared_ptr<Quirk>>>>> quirksCache;
 
 
-    const std::unordered_map<std::string, Quirk*>& getQuirks(std::string_view slot, const std::pair<std::string_view, std::string_view>& objType) {
+    const std::unordered_map<std::string, std::shared_ptr<Quirk>>& getQuirks(std::string_view slot, const std::pair<std::string_view, std::string_view>& objType) {
         // Yank the slotreg out of the cache whether it exists or not...
         auto &slotreg = quirksCache[std::string(slot)];
 
@@ -49,7 +49,7 @@ namespace kaizer {
             return found->second;
         }
         // We didn't find it, so we'll have to make one...
-        auto &newreg = slotreg.emplace_back(objType, std::unordered_map<std::string, Quirk*>()).second;
+        auto &newreg = slotreg.emplace_back(objType, std::unordered_map<std::string, std::shared_ptr<Quirk>>()).second;
 
         for(const auto& type : {objType.first, objType.second}) {
             auto objreg = quirkRegistry.find(std::string(type));

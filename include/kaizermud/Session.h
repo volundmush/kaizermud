@@ -45,6 +45,8 @@ namespace kaizer {
 
         virtual void onHeartbeat(double deltaTime);
 
+        virtual void sendOutput(double deltaTime);
+
 
     protected:
         // The ID of the character is the ID of the session.
@@ -60,7 +62,7 @@ namespace kaizer {
 
         std::chrono::steady_clock::time_point lastActivity{};
         std::chrono::system_clock::time_point created{};
-
+        std::list<std::string> inputQueue;
         std::string outText;
 
     };

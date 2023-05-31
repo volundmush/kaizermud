@@ -10,12 +10,12 @@ namespace kaizer {
         [[nodiscard]] virtual std::vector<std::string> getQuirkSlots() const;
         [[nodiscard]] virtual std::vector<std::string> getStatSlots() const;
         [[nodiscard]] virtual std::vector<std::string> getEquipSlots() const;
-        [[nodiscard]] virtual int getSortPriority() const ;
+        [[nodiscard]] virtual int getSortPriority() const;
         virtual void onLoad(entt::entity ent) const;
         virtual void onAdd(entt::entity ent) const;
         virtual void onRemove(entt::entity ent) const;
     };
 
-    extern std::unordered_map<std::string, Type*> typeRegistry;
+    extern std::unordered_map<std::string, std::shared_ptr<Type>> typeRegistry;
 
 }

@@ -1,5 +1,6 @@
 #include "kaizermud/Session.h"
 #include "kaizermud/game.h"
+#include "kaizermud/Components.h"
 
 namespace kaizer {
 
@@ -31,7 +32,14 @@ namespace kaizer {
     }
 
     void Session::handleText(const std::string &text) {
-
+        lastActivity = std::chrono::steady_clock::now();
+        if(text == "--") {
+            // clear the queue.
+            inputQueue.clear();
+            sendText("Your input queue has been cleared of all pending commands.\n");
+            return;
+        }
+        inputQueue.push_back(text);
     }
 
     void Session::sendText(std::string_view text) {
@@ -89,7 +97,23 @@ namespace kaizer {
     }
 
     void Session::onHeartbeat(double deltaTime) {
-        lastActivity = std::chrono::steady_clock::now();
+        if(inputQueue.empty()) {
+            return;
+        }
+        auto& input = inputQueue.front();
+        auto &cmd = registry.get_or_emplace<components::PendingCommand>(puppet);
+        cmd.input = input;
+        // Now we remove input from inputQueue.
+        inputQueue.pop_front();
+
+    }
+
+    void Session::sendOutput(double deltaTime) {
+         // This will later need to handle prompts.
+        if (!outText.empty()) {
+            sendText(outText);
+            outText.clear();
+        }
     }
 
 }

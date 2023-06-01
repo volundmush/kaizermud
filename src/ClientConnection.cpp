@@ -1,9 +1,10 @@
 #include "kaizermud/ClientConnection.h"
-#include "kaizermud/Session.h"
+#include "kaizermud/Commands.h"
 #include <set>
 #include "kaizermud/utils.h"
 #include "kaizermud/Components.h"
 #include "fmt/format.h"
+#include "boost/algorithm/string.hpp"
 
 namespace kaizer {
 
@@ -73,12 +74,54 @@ namespace kaizer {
         }
     }
 
-    void ClientConnection::handleAccountCommand(const std::string& text) {
-        sendText("GOT AN ACCOUNT COMMAND: " + text + "\r\n");
+    void ClientConnection::handleBadMatch(const std::string& text, std::unordered_map<std::string, std::string>& matches) {
+        sendText("Sorry, that's not a command.\r\n");
+    }
+
+    void ClientConnection::handleConnectCommand(const std::string& text) {
+        auto match_map = parseCommand(text);
+        if(match_map.empty()) {
+            handleBadMatch(text, match_map);
+            return;
+        }
+        auto self = shared_from_this();
+        for(auto &[key, cmd] : connectCommandRegistry) {
+            if(!cmd->isAvailable(self))
+                continue;
+            if(boost::iequals(text, key)) {
+                auto [can, err] = cmd->canExecute(self, match_map);
+                if(!can) {
+                    sendText(fmt::format("Sorry, you can't do that: {}\r\n", err.value()));
+                    return;
+                }
+                cmd->execute(self, match_map);
+                return;
+            }
+        }
+        handleBadMatch(text, match_map);
     }
 
     void ClientConnection::handleLoginCommand(const std::string& text) {
-        sendText("GOT A LOGIN COMMAND: " + text + "\r\n");
+        auto match_map = parseCommand(text);
+        if(match_map.empty()) {
+            handleBadMatch(text, match_map);
+            return;
+        }
+        auto self = shared_from_this();
+        for(auto &[key, cmd] : loginCommandRegistry) {
+            if(!cmd->isAvailable(self))
+                continue;
+            if(boost::iequals(text, key)) {
+                auto [can, err] = cmd->canExecute(self, match_map);
+                if(!can) {
+                    sendText(fmt::format("Sorry, you can't do that: {}\r\n", err.value()));
+                    return;
+                }
+                cmd->execute(self, match_map);
+                return;
+            }
+        }
+        handleBadMatch(text, match_map);
     }
 
     void ClientConnection::handleText(const std::string &str) {
@@ -95,9 +138,9 @@ namespace kaizer {
         if(session)
             session->handleText(str);
         else if(registry.valid(account))
-            handleAccountCommand(str);
-        else
             handleLoginCommand(str);
+        else
+            handleConnectCommand(str);
     }
 
     void ClientConnection::onHeartbeat(double deltaTime) {

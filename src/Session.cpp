@@ -4,10 +4,11 @@
 
 namespace kaizer {
 
-    Session::Session(ObjectID id, entt::entity ent) {
+    Session::Session(ObjectID id, entt::entity character, entt::entity account) {
         this->id = id;
-        character = ent;
-        puppet = ent;
+        this->character = character;
+        puppet = character;
+        this->account = account;
         created = std::chrono::system_clock::now();
     }
 
@@ -115,5 +116,39 @@ namespace kaizer {
             outText.clear();
         }
     }
+
+    entt::entity Session::getCharacter() {
+        return character;
+    }
+
+    entt::entity Session::getPuppet() {
+        return puppet;
+    }
+
+    entt::entity Session::getAccount() {
+        return account;
+    }
+
+    ObjectID Session::getID() {
+        return id;
+    }
+
+    std::chrono::time_point<std::chrono::steady_clock> Session::getCreated() {
+        return created;
+    }
+
+    std::chrono::time_point<std::chrono::steady_clock> Session::getLastActivity() {
+        return lastActivity;
+    }
+
+    int16_t getAdminLevel() {
+        auto acc = registry.try_get<components::Account>(account);
+        if(acc) {
+            return acc->level;
+        }
+        return 0;
+    }
+
+
 
 }

@@ -27,6 +27,8 @@ namespace kaizer::components {
         std::set<ObjectID> characters{};
         std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> connections{};
         std::unordered_map<ObjectID, std::shared_ptr<Session>> sessions{};
+        // This is account permission level, not character level.
+        int16_t level{0};
         OpResult<> setPassword(std::string_view newPassword);
         OpResult<> checkPassword(std::string_view check);
     };

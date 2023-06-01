@@ -6,11 +6,25 @@ namespace kaizer {
 
     boost::regex command_regex(R"((?i)^(?<full>(?<cmd>[^\s\/]+)(?<switches>(\/\w+){0,})?(?:\s+(?<args>(?<lsargs>[^=]+)(?:=(?<rsargs>.*))?))?))");
 
+    std::unordered_map<std::string, std::string> parseCommand(std::string_view input) {
+        std::unordered_map<std::string, std::string> out;
+        boost::smatch match;
+        if(boost::regex_match(std::string(input), match, command_regex)) {
+            out["full"] = match["full"];
+            out["cmd"] = match["cmd"];
+            out["switches"] = match["switches"];
+            out["args"] = match["args"];
+            out["lsargs"] = match["lsargs"];
+            out["rsargs"] = match["rsargs"];
+        }
+        return out;
+    }
+
     OpResult<> Command::canExecute(entt::entity ent, std::unordered_map<std::string, std::string>& input) {
         return {true, std::nullopt};
     }
 
-    std::set<std::string> Command::getKeys() {
+    std::set<std::string> BaseCommand::getKeys() {
         std::set<std::string> out;
         out.insert(std::string(getCmdName()));
         out.insert(getAliases().begin(), getAliases().end());
@@ -42,6 +56,25 @@ namespace kaizer {
         }
 
         return {true, std::nullopt};
+    }
+
+    std::unordered_map<std::string, std::shared_ptr<ConnectCommand>> connectCommandRegistry;
+    std::unordered_map<std::string, std::shared_ptr<LoginCommand>> loginCommandRegistry;
+
+    OpResult<> ConnectCommand::canExecute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) {
+        return {true, std::nullopt};
+    }
+
+    void ConnectCommand::execute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) {
+        spdlog::warn("ConnectCommand {} not implemented", input["cmd"]);
+    }
+
+    OpResult<> LoginCommand::canExecute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) {
+        return {true, std::nullopt};
+    }
+
+    void LoginCommand::execute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) {
+        spdlog::warn("LoginCommand {} not implemented", input["cmd"]);
     }
 
 }

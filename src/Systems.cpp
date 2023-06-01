@@ -130,16 +130,8 @@ namespace kaizer {
 
             // First, we will parse pending.input against our command_regex...
             // If we have a match, we will then check if the command can be executed.
-            boost::smatch matches;
-            std::unordered_map<std::string, std::string> match_map;
-            if(boost::regex_search(pending.input, matches, command_regex)) {
-                match_map["full"] = matches["full"].str();
-                match_map["cmd"] = matches["cmd"].str();
-                match_map["switches"] = matches["switches"].str();
-                match_map["args"] = matches["args"].str();
-                match_map["lsargs"] = matches["lsargs"].str();
-                match_map["rsargs"] = matches["rsargs"].str();
-            } else {
+            auto match_map = parseCommand(pending.input);
+            if(match_map.empty()) {
                 handleBadMatch(entity, match_map);
                 continue;
             }

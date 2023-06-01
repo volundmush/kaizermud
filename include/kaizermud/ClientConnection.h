@@ -58,14 +58,16 @@ namespace kaizer {
         void sendText(const std::string &messg);
         //void sendMSSP(const std::vector<std::tuple<std::string, std::string>> &data);
         //void sendGMCP(const std::string &txt);
-        void onWelcome();
-        void onHeartbeat(double deltaTime);
-        void onNetworkDisconnected();
+        virtual void onWelcome();
+        virtual void onHeartbeat(double deltaTime);
+        virtual void onNetworkDisconnected();
         [[nodiscard]] const ProtocolCapabilities& getCapabilities() const;
         [[nodiscard]] uint64_t getConnID() const;
         [[nodiscard]] entt::entity getAccount() const;
-        void handleText(const std::string& text);
-        void handleLoginCommand(const std::string& text);
+        virtual void handleText(const std::string& text);
+        virtual void handleConnectCommand(const std::string& text);
+        virtual void handleBadMatch(const std::string& text, std::unordered_map<std::string, std::string>& matches);
+
 
         // This is a wrapper around the unbound createAccount which will check for abuse.
         virtual OpResult<entt::entity> createAccount(std::string_view userName, std::string_view password);
@@ -74,7 +76,7 @@ namespace kaizer {
         virtual void loginToAccount(entt::entity ent);
         virtual void onLogin();
 
-        virtual void handleAccountCommand(const std::string& text);
+        virtual void handleLoginCommand(const std::string& text);
 
     protected:
         uint64_t connID;

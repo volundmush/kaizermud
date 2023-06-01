@@ -12,7 +12,7 @@ namespace kaizer {
     // multiple locations.
     class Session {
     public:
-        Session(ObjectID id, entt::entity ent);
+        Session(ObjectID id, entt::entity account, entt::entity character);
         virtual ~Session() = default;
 
         virtual void start();
@@ -47,6 +47,14 @@ namespace kaizer {
 
         virtual void sendOutput(double deltaTime);
 
+        virtual entt::entity getCharacter();
+        virtual entt::entity getPuppet();
+        virtual entt::entity getAccount();
+
+        virtual int16_t getAdminLevel();
+
+        ObjectID getID();
+
 
     protected:
         // The ID of the character is the ID of the session.
@@ -57,6 +65,9 @@ namespace kaizer {
         // but it might not be. For example, if the Character is in a vehicle, the vehicle might be
         // the puppet.
         entt::entity puppet;
+        // The account we are using the permissions of.
+        entt::entity account;
+
         // This is a map of all the connections that are currently linked to this session.
         std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> clients;
 

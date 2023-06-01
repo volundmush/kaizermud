@@ -55,6 +55,9 @@ namespace kaizer {
     extern ApiCall<OpResult<>, std::string_view> removeType;
     OpResult<> defaultRemoveType(entt::entity ent, std::string_view key);
 
+    extern ApiCall<int16_t> getAdminLevel;
+    int16_t defaultGetAdminLevel(entt::entity ent);
+
     // Info
     extern ApiCall<ObjectID> getID;
     ObjectID defaultGetID(entt::entity ent);

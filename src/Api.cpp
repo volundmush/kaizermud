@@ -12,6 +12,17 @@ namespace kaizer {
 
     ApiCall<void> atCreate(defaultAtCreate);
 
+    int16_t defaultGetAdminLevel(entt::entity ent) {
+        auto sess = registry.try_get<SessionHolder>(ent);
+        if(sess) {
+            return sess->data->getAdminLevel();
+        } else {
+            return 0;
+        }
+    }
+
+    ApiCall<int16_t> getAdminLevel(defaultGetAdminLevel);
+
     // Info
     ObjectID defaultGetID(entt::entity ent) {
         return registry.get<ObjectInfo>(ent).id;

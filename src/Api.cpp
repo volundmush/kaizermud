@@ -274,8 +274,8 @@ namespace kaizer {
         auto &objinfo = registry.get<ObjectInfo>(ent);
         auto &out = cache.commands;
         for (auto &type: objinfo.sortedTypes) {
-            auto commands = commandRegistry.find(std::string(type->getKey()));
-            if (commands == commandRegistry.end())
+            auto commands = expandedCommandRegistry.find(std::string(type->getKey()));
+            if (commands == expandedCommandRegistry.end())
                 continue;
             for (auto &[key, cmd]: commands->second) {
                 out[key] = cmd.get();

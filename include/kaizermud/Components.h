@@ -6,6 +6,7 @@
 #include "kaizermud/Session.h"
 #include "kaizermud/Types.h"
 #include "kaizermud/Commands.h"
+#include "nlohmann/json.hpp"
 
 namespace kaizer::components {
 
@@ -17,6 +18,8 @@ namespace kaizer::components {
     };
 
     struct Account {
+        Account() = default;
+        explicit Account(const nlohmann::json &j);
         std::string username{}, password{}, email{};
         std::chrono::system_clock::time_point created{};
         std::chrono::system_clock::time_point lastLogin{};
@@ -31,6 +34,8 @@ namespace kaizer::components {
         int16_t level{0};
         OpResult<> setPassword(std::string_view newPassword);
         OpResult<> checkPassword(std::string_view check);
+        nlohmann::json serialize();
+        void deserialize(const nlohmann::json& j);
     };
 
     struct Aspects {

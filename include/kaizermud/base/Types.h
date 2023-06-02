@@ -112,4 +112,6 @@ namespace kaizer::base {
         [[nodiscard]] std::string_view getName() const override { return "Sector"; }
     };
 
+    void registerTypes();
+
 }

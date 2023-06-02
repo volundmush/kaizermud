@@ -6,19 +6,17 @@ namespace kaizer {
 
     class Quirk {
     public:
-        std::string objType, slotType, key;
+        [[nodiscard]] virtual std::string_view getSlot() = 0;
+        [[nodiscard]] virtual std::string_view getKey() = 0;
         virtual void onRemove(entt::entity ent);
         virtual void onAdd(entt::entity ent);
         virtual void onLoad(entt::entity ent);
+        [[nodiscard]] virtual OpResult<> canSet(entt::entity ent);
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Quirk>>>> quirkRegistry;
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Quirk>>> quirkRegistry;
 
-    extern std::unordered_map<std::string, std::vector<std::pair<std::pair<std::string_view, std::string_view>, std::unordered_map<std::string, std::shared_ptr<Quirk>>>>> quirksCache;
-
-    const std::unordered_map<std::string, std::shared_ptr<Quirk>>& getQuirks(std::string_view slot, const std::pair<std::string_view, std::string_view>& objType);
-
-    OpResult<> registerQuirk(std::shared_ptr<Quirk> entry);
+    OpResult<> registerQuirk(const std::shared_ptr<Quirk>& entry);
 
 
 }

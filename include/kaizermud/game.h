@@ -57,9 +57,6 @@ namespace kaizer {
     };
 
     ObjectID getNextAvailableID();
-    boost::asio::awaitable<void> process_connections(double deltaTime);
-    boost::asio::awaitable<void> process_tasks(double deltaTime);
-    boost::asio::awaitable<void> process_sessions(double deltaTime);
     boost::asio::awaitable<void> load();
     boost::asio::awaitable<void> heartbeat(double deltaTime);
     boost::asio::awaitable<void> run();

@@ -27,8 +27,8 @@ namespace kaizer {
 
     };
 
-    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry;
-    OpResult<> registerCommand(std::shared_ptr<Command> entry);
+    extern std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry, expandedCommandRegistry;
+    OpResult<> registerCommand(const std::shared_ptr<Command>& entry);
 
     extern boost::regex command_regex;
 
@@ -45,17 +45,20 @@ namespace kaizer {
         [[nodiscard]] virtual bool isAvailable(const std::shared_ptr<ClientConnection>& connection) {return true;};
     };
 
-    extern std::unordered_map<std::string, std::shared_ptr<ConnectCommand>> connectCommandRegistry;
-
+    extern std::unordered_map<std::string, std::shared_ptr<ConnectCommand>> connectCommandRegistry, expandedConnectCommandRegistry;
+    OpResult<> registerConnectCommand(const std::shared_ptr<ConnectCommand>& entry);
     /*
      * After logging into an Account, players will have access to these
      * commands.
      */
-    struct LoginCommand {
+    struct LoginCommand : BaseCommand {
         [[nodiscard]] virtual OpResult<> canExecute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input);
         virtual void execute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input);
         [[nodiscard]] virtual bool isAvailable(const std::shared_ptr<ClientConnection>& connection) {return true;};
     };
 
-    extern std::unordered_map<std::string, std::shared_ptr<LoginCommand>> loginCommandRegistry;
+    extern std::unordered_map<std::string, std::shared_ptr<LoginCommand>> loginCommandRegistry, expandedLoginCommandRegistry;
+    OpResult<> registerLoginCommand(const std::shared_ptr<LoginCommand>& entry);
+
+    void expandCommands();
 }

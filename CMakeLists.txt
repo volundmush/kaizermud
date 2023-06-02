@@ -28,6 +28,7 @@ CPMAddPackage("gh:kunitoki/LuaBridge3#3.0-rc3")
 CPMAddPackage("gh:skypjack/entt#v3.11.1")
 CPMAddPackage("gh:robinlinden/libsodium-cmake#master")
 CPMAddPackage("gh:gabime/spdlog#v1.11.0")
+CPMAddPackage("gh:nlohmann/json#v3.11.2")
 
 SET(LUABRIDGE_TESTING OFF)
 SET(LUAU_BUILD_CLI OFF)
@@ -53,6 +54,7 @@ SET(KAIZERMUD_INCLUDE_DIRS
         ${entt_SOURCE_DIR}/single_include
         ${sodium_SOURCE_DIR}/libsodium/src/libsodium/include
         ${spdlog_SOURCE_DIR}/include
+        ${nlohmann_json_SOURCE_DIR}/single_include
 )
 
 add_library(kaizermud ${KAIZERMUD_INCLUDE} ${KAIZERMUD_SRC})

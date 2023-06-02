@@ -35,31 +35,38 @@ namespace kaizer {
         spdlog::warn("Command {} not implemented", input["cmd"]);
     }
 
-    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry;
+    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry, expandedCommandRegistry;
 
-    OpResult<> registerCommand(std::shared_ptr<Command> entry) {
+    OpResult<> registerCommand(const std::shared_ptr<Command>& entry) {
         if(entry->getType().empty()) {
             return {false, "CommandEntry Type cannot be empty"};
         }
         if(entry->getCmdName().empty()) {
             return {false, "CommandEntry cmdName cannot be empty"};
         }
-
         auto &reg = commandRegistry[std::string(entry->getType())];
-
-        for(auto& key : entry->getKeys()) {
-            auto lower = boost::algorithm::to_lower_copy(std::string(key));
-            if(reg.find(lower) != reg.end()) {
-                return {false, "CommandEntry key already registered"};
-            }
-            reg[lower] = entry;
-        }
-
+        reg[std::string(entry->getCmdName())] = entry;
         return {true, std::nullopt};
     }
 
-    std::unordered_map<std::string, std::shared_ptr<ConnectCommand>> connectCommandRegistry;
-    std::unordered_map<std::string, std::shared_ptr<LoginCommand>> loginCommandRegistry;
+    OpResult<> registerLoginCommand(const std::shared_ptr<LoginCommand>& entry) {
+        if(entry->getCmdName().empty()) {
+            return {false, "CommandEntry cmdName cannot be empty"};
+        }
+        loginCommandRegistry[std::string(entry->getCmdName())] = entry;
+        return {true, std::nullopt};
+    }
+
+    OpResult<> registerConnectCommand(const std::shared_ptr<ConnectCommand>& entry) {
+        if(entry->getCmdName().empty()) {
+            return {false, "CommandEntry cmdName cannot be empty"};
+        }
+        connectCommandRegistry[std::string(entry->getCmdName())] = entry;
+        return {true, std::nullopt};
+    }
+
+    std::unordered_map<std::string, std::shared_ptr<ConnectCommand>> connectCommandRegistry, expandedConnectCommandRegistry;
+    std::unordered_map<std::string, std::shared_ptr<LoginCommand>> loginCommandRegistry, expandedLoginCommandRegistry;
 
     OpResult<> ConnectCommand::canExecute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) {
         return {true, std::nullopt};
@@ -75,6 +82,26 @@ namespace kaizer {
 
     void LoginCommand::execute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) {
         spdlog::warn("LoginCommand {} not implemented", input["cmd"]);
+    }
+
+    void expandCommands() {
+        for(auto& [type, commands] : commandRegistry) {
+            for(auto& [cmdName, cmd] : commands) {
+                for(auto& key : cmd->getKeys()) {
+                    expandedCommandRegistry[type][boost::algorithm::to_lower_copy(key)] = cmd;
+                }
+            }
+        }
+        for(auto& [cmdName, cmd] : connectCommandRegistry) {
+            for(auto& key : cmd->getKeys()) {
+                expandedConnectCommandRegistry[boost::algorithm::to_lower_copy(key)] = cmd;
+            }
+        }
+        for(auto& [cmdName, cmd] : loginCommandRegistry) {
+            for(auto& key : cmd->getKeys()) {
+                expandedLoginCommandRegistry[boost::algorithm::to_lower_copy(key)] = cmd;
+            }
+        }
     }
 
 }

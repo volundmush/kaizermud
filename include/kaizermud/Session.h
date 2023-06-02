@@ -53,6 +53,9 @@ namespace kaizer {
 
         virtual int16_t getAdminLevel();
 
+        std::chrono::steady_clock::time_point getLastActivity();
+        std::chrono::system_clock::time_point getCreated();
+
         ObjectID getID();
 
 

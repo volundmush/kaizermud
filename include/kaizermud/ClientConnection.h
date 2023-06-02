@@ -73,6 +73,7 @@ namespace kaizer {
         virtual OpResult<entt::entity> createAccount(std::string_view userName, std::string_view password);
 
         virtual void onCreateAccount(std::string_view userName, std::string_view password, entt::entity ent);
+        virtual OpResult<> handleLogin(const std::string &userName, const std::string &password);
         virtual void loginToAccount(entt::entity ent);
         virtual void onLogin();
 

@@ -25,7 +25,7 @@ namespace kaizer {
         hostAddress = obj["host_address"].as_string().c_str();
         hostPort = obj["host_port"].as_int64();
         for(auto &hn : obj["host_names"].as_array()) {
-            hostNames.push_back(hn.as_string().c_str());
+            hostNames.emplace_back(hn.as_string().c_str());
         }
         encoding = obj["encoding"].as_string().c_str();
         utf8 = obj["utf8"].as_bool();
@@ -85,7 +85,7 @@ namespace kaizer {
             return;
         }
         auto self = shared_from_this();
-        for(auto &[key, cmd] : connectCommandRegistry) {
+        for(auto &[key, cmd] : expandedConnectCommandRegistry) {
             if(!cmd->isAvailable(self))
                 continue;
             if(boost::iequals(text, key)) {
@@ -108,7 +108,7 @@ namespace kaizer {
             return;
         }
         auto self = shared_from_this();
-        for(auto &[key, cmd] : loginCommandRegistry) {
+        for(auto &[key, cmd] : expandedLoginCommandRegistry) {
             if(!cmd->isAvailable(self))
                 continue;
             if(boost::iequals(text, key)) {
@@ -267,6 +267,11 @@ namespace kaizer {
 
     }
 
+    OpResult<> ClientConnection::handleLogin(const std::string &userName, const std::string &password) {
+        // TODO: Implement this.
+        return {false, "Not implemented."};
+    }
+
     std::unordered_map<std::string, std::set<entt::entity>> accountsCreatedRecently;
 
     // Validator functions for checking whether a new/renamed account/character string is valid.
@@ -306,5 +311,7 @@ namespace kaizer {
         account.lastPasswordChanged = std::chrono::system_clock::now();
         return {ent, std::nullopt};
     }
+
+
 
 }

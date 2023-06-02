@@ -133,15 +133,15 @@ namespace kaizer {
         return id;
     }
 
-    std::chrono::time_point<std::chrono::steady_clock> Session::getCreated() {
+    std::chrono::system_clock::time_point Session::getCreated() {
         return created;
     }
 
-    std::chrono::time_point<std::chrono::steady_clock> Session::getLastActivity() {
+    std::chrono::steady_clock::time_point Session::getLastActivity() {
         return lastActivity;
     }
 
-    int16_t getAdminLevel() {
+    int16_t Session::getAdminLevel() {
         auto acc = registry.try_get<components::Account>(account);
         if(acc) {
             return acc->level;

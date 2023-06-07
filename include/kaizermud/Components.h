@@ -7,6 +7,7 @@
 #include "kaizermud/Types.h"
 #include "kaizermud/Commands.h"
 #include "nlohmann/json.hpp"
+#include "kaizermud/CallParameters.h"
 
 namespace kaizer::components {
 
@@ -74,6 +75,10 @@ namespace kaizer::components {
         std::unordered_map<std::string, std::vector<entt::entity>> data{};
     };
 
+    struct SavedLocations {
+        std::unordered_map<std::string, ObjectID> data{};
+    };
+
     struct SessionHolder {
         // 0 is no session, 1 is main puppet, 2 is sub puppet
         uint8_t sessionMode{0};
@@ -86,9 +91,18 @@ namespace kaizer::components {
         void sortCommands();
     };
 
-
+    // Systems and game state components below...
     struct PendingCommand {
         std::string input;
+    };
+
+    struct PendingMove {
+        CallParameters params;
+        entt::entity reportTo{entt::null};
+    };
+
+    struct PendingLook {
+        entt::entity target{entt::null};
     };
 
 }

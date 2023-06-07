@@ -21,13 +21,6 @@ namespace kaizer {
         WebSocket = 1
     };
 
-    enum class ColorType : uint8_t {
-        NoColor = 0,
-        Standard = 1,
-        Xterm256 = 2,
-        TrueColor = 3
-    };
-
     struct ProtocolCapabilities {
         Protocol protocol{Protocol::Telnet};
         bool encryption = false;
@@ -76,8 +69,10 @@ namespace kaizer {
         virtual OpResult<> handleLogin(const std::string &userName, const std::string &password);
         virtual void loginToAccount(entt::entity ent);
         virtual void onLogin();
-
         virtual void handleLoginCommand(const std::string& text);
+        virtual void createOrJoinSession(entt::entity ent);
+
+        virtual void displayAccountMenu();
 
     protected:
         uint64_t connID;

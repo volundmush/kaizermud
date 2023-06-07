@@ -3,6 +3,7 @@
 #include "kaizermud/base.h"
 #include "kaizermud/Components.h"
 #include "kaizermud/Types.h"
+#include "kaizermud/CallParameters.h"
 
 
 namespace kaizer {
@@ -71,6 +72,15 @@ namespace kaizer {
     OpResult<> defaultClearString(entt::entity ent, std::string_view);
     std::optional<std::string_view> defaultGetString(entt::entity ent, std::string_view);
 
+    // Integers
+    extern ApiCall<OpResult<>, std::string_view, int64_t> setInteger;
+    extern ApiCall<OpResult<>, std::string_view> clearInteger;
+    extern ApiCall<std::optional<int64_t>, std::string_view> getInteger;
+
+    OpResult<> defaultSetInteger(entt::entity ent, std::string_view, int64_t);
+    OpResult<> defaultClearInteger(entt::entity ent, std::string_view);
+    std::optional<int64_t> defaultGetInteger(entt::entity ent, std::string_view);
+
     // Relations
     extern ApiCall<OpResult<>, std::string_view, entt::entity> setRelation;
     extern ApiCall<OpResult<>, std::string_view> clearRelation;
@@ -104,5 +114,68 @@ namespace kaizer {
     // Communication
     extern ApiCall<OpResult<>, std::string_view> sendText;
     OpResult<> defaultSendText(entt::entity ent, std::string_view text);
+
+    // Movement
+    extern ApiCall<OpResult<>, CallParameters&> moveTo;
+    OpResult<> defaultMoveTo(entt::entity ent, CallParameters& params);
+
+    extern ApiCall<OpResult<>, const CallParameters&> atPreMove;
+    OpResult<> defaultAtPreMove(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<OpResult<>, const CallParameters&> atPreObjectLeave;
+    OpResult<> defaultAtPreObjectLeave(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<OpResult<>, const CallParameters&> atPreObjectReceive;
+    OpResult<> defaultAtPreObjectReceive(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<void, const CallParameters&> atObjectLeave;
+    void defaultAtObjectLeave(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<void, const CallParameters&> announceMoveFrom;
+    void defaultAnnounceMoveFrom(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<void, const CallParameters&> announceMoveTo;
+    void defaultAnnounceMoveTo(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<void, const CallParameters&> atObjectReceive;
+    void defaultAtObjectReceive(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<void, const CallParameters&> atPostMove;
+    void defaultAtPostMove(entt::entity ent, const CallParameters& param);
+
+    extern ApiCall<void> stowCharacter;
+    void defaultStowCharacter(entt::entity ent);
+
+    extern ApiCall<OpResult<entt::entity>> getUnstowLocation;
+    OpResult<entt::entity> defaultGetUnstowLocation(entt::entity ent);
+
+    extern ApiCall<OpResult<>> unstowCharacter;
+    OpResult<> defaultUnstowCharacter(entt::entity ent);
+
+    // Look / Appearance / Identity
+    extern ApiCall<std::string, entt::entity> getDisplayName;
+    std::string defaultGetDisplayName(entt::entity ent, entt::entity looker);
+
+    extern ApiCall<std::string, entt::entity> getRoomLine;
+    std::string defaultGetRoomLine(entt::entity ent, entt::entity looker);
+
+    extern ApiCall<void, entt::entity> atLook;
+    void defaultAtLook(entt::entity ent, entt::entity target);
+
+    extern ApiCall<void, entt::entity> atDesc;
+    void defaultAtDesc(entt::entity ent, entt::entity looker);
+
+    extern ApiCall<std::string, entt::entity> renderAppearance;
+    std::string defaultRenderAppearance(entt::entity ent, entt::entity looker);
+
+    extern ApiCall<std::set<std::string>, entt::entity> getSearchWords;
+    std::set<std::string> defaultGetSearchWords(entt::entity ent, entt::entity looker);
+
+    extern ApiCall<bool, std::string_view, entt::entity> checkSearch;
+    bool defaultCheckSearch(entt::entity ent, std::string_view term, entt::entity looker);
+
+    extern ApiCall<bool, entt::entity, std::string_view> canDetect;
+    bool defaultCanDetect(entt::entity ent, entt::entity looker, std::string_view sense);
+
 
 }

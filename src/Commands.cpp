@@ -9,7 +9,8 @@ namespace kaizer {
     std::unordered_map<std::string, std::string> parseCommand(std::string_view input) {
         std::unordered_map<std::string, std::string> out;
         boost::smatch match;
-        if(boost::regex_match(std::string(input), match, command_regex)) {
+        auto input_str = std::string(input);
+        if(boost::regex_match(input_str, match, command_regex)) {
             out["full"] = match["full"];
             out["cmd"] = match["cmd"];
             out["switches"] = match["switches"];
@@ -27,7 +28,8 @@ namespace kaizer {
     std::set<std::string> BaseCommand::getKeys() {
         std::set<std::string> out;
         out.insert(std::string(getCmdName()));
-        out.insert(getAliases().begin(), getAliases().end());
+        auto aliases = getAliases();
+        out.insert(aliases.begin(), aliases.end());
         return out;
     }
 

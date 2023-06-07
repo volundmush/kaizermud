@@ -85,9 +85,10 @@ namespace kaizer {
         if (it == state::connections.end()) {
             // Create a new ClientConnection
             mpmc_channel<boost::json::value> clientChan(co_await boost::asio::this_coro::executor, 50);
-            auto cc = std::make_shared<ClientConnection>(linkManager, id, std::move(clientChan));
+            auto cc = makeConnection(linkManager, id, std::move(clientChan));
             state::connections[id] = cc;
             state::pending_connections.insert(id);
+            cc->capabilities.deserialize(capabilities);
         } else {
             // Update the existing ClientConnection
             auto& client_connection = it->second;
@@ -204,5 +205,11 @@ namespace kaizer {
         }
         co_return;
     }
+
+    std::shared_ptr<ClientConnection> defaultMakeConnection(LinkManager& lm, uint64_t conn_id, mpmc_channel<boost::json::value> chan) {
+        return std::make_shared<ClientConnection>(lm, conn_id, std::move(chan));
+    }
+    std::function<std::shared_ptr<ClientConnection>(LinkManager&, uint64_t, mpmc_channel<boost::json::value>)> makeConnection(defaultMakeConnection);
+
 
 }

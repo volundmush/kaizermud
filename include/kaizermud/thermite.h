@@ -48,4 +48,8 @@ namespace kaizer {
         bool is_stopped;
     };
 
+
+    std::shared_ptr<ClientConnection> defaultMakeConnection(LinkManager& lm, uint64_t conn_id, mpmc_channel<boost::json::value> chan);
+    extern std::function<std::shared_ptr<ClientConnection>(LinkManager&, uint64_t, mpmc_channel<boost::json::value>)> makeConnection;
+
 }

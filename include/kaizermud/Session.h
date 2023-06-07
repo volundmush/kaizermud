@@ -33,6 +33,8 @@ namespace kaizer {
         // Remove all connections from this session.
         virtual void removeAllConnections();
 
+        virtual void onFirstConnection();
+
         virtual void onLinkDead();
 
         virtual void onNetworkDisconnected(uint64_t connId);
@@ -78,6 +80,10 @@ namespace kaizer {
         std::chrono::system_clock::time_point created{};
         std::list<std::string> inputQueue;
         std::string outText;
-
+        int totalConnections{0};
     };
+
+    extern std::function<std::shared_ptr<Session>(ObjectID, entt::entity, entt::entity)> makeSession;
+    std::shared_ptr<Session> defaultMakeSession(ObjectID id, entt::entity account, entt::entity character);
+
 }

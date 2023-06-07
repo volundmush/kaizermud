@@ -3,6 +3,9 @@
 
 namespace kaizer {
 
+    std::random_device randomDevice;
+    std::default_random_engine randomEngine(randomDevice());
+
     std::unordered_set<std::string> stringPool;
 
     std::string_view intern(const std::string& str) {

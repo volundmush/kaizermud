@@ -60,5 +60,17 @@ namespace kaizer::base {
 
     }
 
+    void registerConnectCommands() {
+        std::vector<std::shared_ptr<ConnectCommand>> commands;
+        commands.emplace_back(std::make_shared<ConnectCommandCreate>());
+        commands.emplace_back(std::make_shared<ConnectCommandQuit>());
+        commands.emplace_back(std::make_shared<ConnectCommandHelp>());
+        commands.emplace_back(std::make_shared<ConnectCommandWho>());
+        commands.emplace_back(std::make_shared<ConnectCommandLook>());
+        commands.emplace_back(std::make_shared<ConnectCommandConnect>());
 
+        for(auto& cmd : commands) {
+            registerConnectCommand(cmd);
+        }
+    }
 }

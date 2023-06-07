@@ -46,6 +46,7 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+    kaizer::registerBaseResources();
     kaizer::startup(endpoint);
 
     return 0;

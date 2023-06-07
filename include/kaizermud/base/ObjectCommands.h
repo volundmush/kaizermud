@@ -44,12 +44,14 @@ namespace kaizer::base {
                                                                             "west", "w",
                                                                             "up", "u",
                                                                             "down", "d",
-                                                                            "in", "out",
+                                                                            "in", "inside",
+                                                                            "out", "outside",
                                                                             "northwest", "nw",
                                                                             "northeast", "ne",
                                                                             "southwest", "sw",
                                                                             "southeast", "se"}; };
         void execute(entt::entity ent, std::unordered_map<std::string, std::string> &input) override;
+        OpResult<> canExecute(entt::entity ent, std::unordered_map<std::string, std::string> &input) override;
     };
 
     /*
@@ -169,5 +171,6 @@ namespace kaizer::base {
     };
 
 
+    void registerObjectCommands();
 
 }

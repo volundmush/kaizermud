@@ -26,5 +26,12 @@ namespace kaizer {
 
     OpResult<entt::entity> createEntity(std::optional<ObjectID> id = std::nullopt);
 
+    enum class ColorType : uint8_t {
+        NoColor = 0,
+        Standard = 1,
+        Xterm256 = 2,
+        TrueColor = 3
+    };
+
 
 }

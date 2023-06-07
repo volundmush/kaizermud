@@ -18,7 +18,7 @@ namespace kaizer {
 
     void createSchema(const std::shared_ptr<SQLite::Database>& db);
 
-    void saveToDB(entt::entity ent, const std::shared_ptr<SQLite::Database>& db);
+    std::chrono::high_resolution_clock::duration saveToDB(entt::entity ent, const std::shared_ptr<SQLite::Database>& db);
 
     void loadFromDB(entt::entity ent, const std::shared_ptr<SQLite::Database>& db);
 
@@ -29,5 +29,14 @@ namespace kaizer {
     nlohmann::json serializeObject(entt::entity ent, bool asPrototype = false);
 
     void deserializeObject(entt::entity ent, const nlohmann::json& j);
+
+    void savePrototype(std::string_view name, const nlohmann::json& j);
+    std::optional<nlohmann::json> loadPrototype(std::string_view name);
+
+    std::string generateDbFilename();
+
+    void loadLatestSave();
+
+    void saveSnapShot();
 
 }

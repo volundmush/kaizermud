@@ -29,6 +29,7 @@ CPMAddPackage("gh:skypjack/entt#v3.11.1")
 CPMAddPackage("gh:robinlinden/libsodium-cmake#master")
 CPMAddPackage("gh:gabime/spdlog#v1.11.0")
 CPMAddPackage("gh:nlohmann/json#v3.11.2")
+CPMAddPackage("gh:simdjson/simdjson#v3.1.8")
 
 SET(LUABRIDGE_TESTING OFF)
 SET(LUAU_BUILD_CLI OFF)
@@ -55,6 +56,7 @@ SET(KAIZERMUD_INCLUDE_DIRS
         ${sodium_SOURCE_DIR}/libsodium/src/libsodium/include
         ${spdlog_SOURCE_DIR}/include
         ${nlohmann_json_SOURCE_DIR}/single_include
+        ${simdjson_SOURCE_DIR}/include
 )
 
 add_library(kaizermud ${KAIZERMUD_INCLUDE} ${KAIZERMUD_SRC})
@@ -62,7 +64,7 @@ target_include_directories(kaizermud PUBLIC ${KAIZERMUD_INCLUDE_DIRS})
 add_executable(kaizer apps/kaizer.cpp)
 target_include_directories(kaizer PUBLIC ${KAIZERMUD_INCLUDE_DIRS})
 
-set(KAIZERMUD_LINK_LIBRARIES ${Boost_LIBRARIES} Luau.VM Luau.Common Luau.Compiler SQLiteCpp sqlite3 fmt::fmt sodium)
+set(KAIZERMUD_LINK_LIBRARIES ${Boost_LIBRARIES} Luau.VM Luau.Common Luau.Compiler SQLiteCpp sqlite3 fmt::fmt sodium simdjson)
 
 target_link_libraries(kaizermud ${KAIZERMUD_LINK_LIBRARIES})
 target_link_libraries(kaizer ${KAIZERMUD_LINK_LIBRARIES} kaizermud)

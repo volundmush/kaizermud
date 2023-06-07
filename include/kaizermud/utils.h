@@ -1,5 +1,6 @@
 #pragma once
 #include "kaizermud/base.h"
+#include <random>
 #include <unordered_set>
 
 constexpr unsigned int string_hash(const char *str, int h = 0) {
@@ -11,6 +12,9 @@ constexpr unsigned int operator"" _hash(const char *str, size_t) {
 }
 
 namespace kaizer {
+
+    extern std::random_device randomDevice;
+    extern std::default_random_engine randomEngine;
 
     extern std::unordered_set<std::string> stringPool;
 

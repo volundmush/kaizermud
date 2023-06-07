@@ -2,6 +2,10 @@
 #include <chrono>
 #include <boost/asio/steady_timer.hpp>
 #include "kaizermud/Systems.h"
+#include "kaizermud/Commands.h"
+#include "kaizermud/startup.h"
+#include "spdlog/spdlog.h"
+#include "kaizermud/Database.h"
 
 namespace kaizer {
     using namespace std::chrono_literals;
@@ -33,6 +37,10 @@ namespace kaizer {
     }
 
     boost::asio::awaitable<void> load() {
+        sortSystems();
+        expandCommands();
+        loadLatestSave();
+
         co_return;
     }
 
@@ -48,10 +56,25 @@ namespace kaizer {
             auto deltaTime = currentTime - previousTime;
             double deltaTimeInSeconds = std::chrono::duration<double>(deltaTime).count();
             previousTime = currentTime;
-            co_await heartbeat(deltaTimeInSeconds);
+            try {
+                co_await heartbeat(deltaTimeInSeconds);
+            } catch(std::exception& e) {
+                std::cerr << "Exception in heartbeat: " << e.what() << std::endl;
+            }
         }
         // todo: figure out a shutdown / restart routine.
         co_return;
+    }
+
+    void broadcast(std::string_view text) {
+        boost::json::object j;
+        j["kind"] = "broadcast";
+        if(text.ends_with("\n")) j["data"] = text;
+        else {
+            j["data"] = std::string(text) + "\n";
+        }
+        spdlog::info("Broadcasting: {}", text);
+        linkManager->linkChan.try_send(boost::system::error_code{}, j);
     }
 
     void LuaCode::compile() {

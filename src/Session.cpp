@@ -76,6 +76,18 @@ namespace kaizer {
     void Session::addConnection(const std::shared_ptr<ClientConnection> &conn) {
         clients[conn->getConnID()] = conn;
         onAddConnection(conn);
+        totalConnections++;
+    }
+
+    void Session::onAddConnection(const std::shared_ptr<ClientConnection>& conn) {
+        // If we have only one connection then we need to launch a special hook.
+        if(totalConnections == 0) {
+            onFirstConnection();
+        }
+    }
+
+    void Session::onFirstConnection() {
+
     }
 
     void Session::removeConnection(uint64_t connID) {
@@ -97,6 +109,10 @@ namespace kaizer {
         }
     }
 
+    void Session::onRemoveConnection(const std::shared_ptr<ClientConnection>& conn) {
+
+    }
+
     void Session::onHeartbeat(double deltaTime) {
         if(inputQueue.empty()) {
             return;
@@ -112,7 +128,9 @@ namespace kaizer {
     void Session::sendOutput(double deltaTime) {
          // This will later need to handle prompts.
         if (!outText.empty()) {
-            sendText(outText);
+            for(auto &[id, c] : clients) {
+                c->sendText(outText);
+            }
             outText.clear();
         }
     }
@@ -149,6 +167,9 @@ namespace kaizer {
         return 0;
     }
 
-
+    std::shared_ptr<Session> defaultMakeSession(ObjectID id, entt::entity account, entt::entity character) {
+        return std::make_shared<Session>(id, character, account);
+    }
+    std::function<std::shared_ptr<Session>(ObjectID, entt::entity, entt::entity)> makeSession(defaultMakeSession);
 
 }

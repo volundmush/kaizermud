@@ -39,4 +39,6 @@ namespace kaizer::base {
         void execute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) override;
     };
 
+    void registerConnectCommands();
+
 }

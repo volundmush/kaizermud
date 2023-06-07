@@ -69,4 +69,6 @@ namespace kaizer {
         extern std::unordered_map<ObjectID, std::shared_ptr<Session>> sessions;
     }
 
+    void broadcast(std::string_view text);
+
 }

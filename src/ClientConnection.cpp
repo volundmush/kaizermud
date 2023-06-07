@@ -5,6 +5,10 @@
 #include "kaizermud/Components.h"
 #include "fmt/format.h"
 #include "boost/algorithm/string.hpp"
+#include "spdlog/spdlog.h"
+#include "kaizermud/Color.h"
+#include "kaizermud/game.h"
+#include "kaizermud/Api.h"
 
 namespace kaizer {
 
@@ -80,15 +84,17 @@ namespace kaizer {
 
     void ClientConnection::handleConnectCommand(const std::string& text) {
         auto match_map = parseCommand(text);
+
         if(match_map.empty()) {
             handleBadMatch(text, match_map);
             return;
         }
         auto self = shared_from_this();
+        auto ckey = match_map["cmd"];
         for(auto &[key, cmd] : expandedConnectCommandRegistry) {
             if(!cmd->isAvailable(self))
                 continue;
-            if(boost::iequals(text, key)) {
+            if(boost::iequals(ckey, key)) {
                 auto [can, err] = cmd->canExecute(self, match_map);
                 if(!can) {
                     sendText(fmt::format("Sorry, you can't do that: {}\r\n", err.value()));
@@ -108,10 +114,11 @@ namespace kaizer {
             return;
         }
         auto self = shared_from_this();
+        auto ckey = match_map["cmd"];
         for(auto &[key, cmd] : expandedLoginCommandRegistry) {
             if(!cmd->isAvailable(self))
                 continue;
-            if(boost::iequals(text, key)) {
+            if(boost::iequals(ckey, key)) {
                 auto [can, err] = cmd->canExecute(self, match_map);
                 if(!can) {
                     sendText(fmt::format("Sorry, you can't do that: {}\r\n", err.value()));
@@ -209,7 +216,7 @@ namespace kaizer {
         boost::json::array jarr;
         boost::json::object jobj2;
         jobj2["cmd"] = "text";
-        jobj2["args"] = {text};
+        jobj2["args"] = {renderAnsi(text, this->capabilities.colorType)};
         jobj2["kwargs"] = {};
         jarr.push_back(jobj2);
         jobj["data"] = jarr;
@@ -264,13 +271,85 @@ namespace kaizer {
     }
 
     void ClientConnection::onLogin() {
+        sendText(fmt::format("Welcome back, {}!\r\n", registry.get<components::Account>(account).username));
+        displayAccountMenu();
+    }
 
+    void ClientConnection::displayAccountMenu() {
+        auto &acc = registry.get<components::Account>(account);
+        sendText("                 @RAccount Menu@n\n");
+        sendText("=============================================\n");
+        sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Username", acc.username));
+        if(!acc.email.empty())
+            sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Email Address", acc.email));
+        if(acc.level > 0)
+            sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Admin Level", acc.level));
+        sendText("=============================================\n\n");
+
+        std::vector<entt::entity> characters;
+        for(auto o : acc.characters) {
+            auto found = entities.find(o);
+            if(found != entities.end()) {
+                characters.push_back(found->second);
+            }
+        }
+
+        if(!characters.empty()) {
+            sendText("[@y----@YAvailable Characters@y----@n]\n");
+            for(auto ent : characters) {
+                auto name = getString(ent, "name");
+                if(name.has_value())
+                    sendText(std::string(name.value()) + "\n");
+                else
+                    sendText("Unnamed Character\n");
+            }
+        }
+
+        sendText("\n[@y----@YCommands@y----@n]\n");
+        sendText("@Wcreate <character>@n - Create a new character.\n");
+        sendText("@Wplay <character>@n - Log in to a character.\n");
+        sendText("@Wdelete <character>@n - Delete a character.\n");
+        sendText("@Wpassword <old password>=<new password>@n - Change your password.\n");
+        sendText("@Wemail <email address>@n - Change your email address.\n");
+        sendText("@Wquit@n - Quit the game.\n");
     }
 
     OpResult<> ClientConnection::handleLogin(const std::string &userName, const std::string &password) {
-        // TODO: Implement this.
-        return {false, "Not implemented."};
+        auto view = registry.view<components::Account>();
+
+        for(auto& entity : view) {
+            auto& acc = view.get<components::Account>(entity);
+            if(boost::iequals(acc.username, userName)) {
+                auto [check, err] = acc.checkPassword(password);
+                if(!check) {
+                    return {false, err};
+                }
+                loginToAccount(entity);
+                return {true, std::nullopt};
+            }
+        }
+        return {false, "No such account.\n"};
     }
+
+    void ClientConnection::createOrJoinSession(entt::entity ent) {
+        auto sessholder = registry.try_get<components::SessionHolder>(ent);
+
+        if(sessholder) {
+            // the character already has a session, so we need to join this ClientConnection
+            // to it.
+            session = sessholder->data;
+        } else {
+            auto id = getID(ent);
+            // The character has no session, so we need to create one and join the clientConnection to it.
+            session = makeSession(id, account, ent);
+            state::sessions[id] = session;
+            auto &sholder = registry.emplace<components::SessionHolder>(ent);
+            sholder.data = session;
+            sholder.sessionMode = 1;
+        }
+        session->addConnection(shared_from_this());
+    }
+
 
     std::unordered_map<std::string, std::set<entt::entity>> accountsCreatedRecently;
 

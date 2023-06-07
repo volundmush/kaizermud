@@ -13,9 +13,9 @@ namespace kaizer {
             virtual boost::asio::awaitable<void> run(double deltaTime);
         };
 
-        extern std::vector<System*> sortedSystems;
-        extern std::unordered_map<std::string, System*> systemRegistry;
-        void registerSystem(System* system);
+        extern std::vector<std::shared_ptr<System>> sortedSystems;
+        extern std::unordered_map<std::string, std::shared_ptr<System>> systemRegistry;
+        void registerSystem(std::shared_ptr<System> system);
         void sortSystems();
 
         class ProcessConnections : public System {
@@ -42,12 +42,28 @@ namespace kaizer {
         class ProcessCommands : public System {
         public:
             std::string_view getName() override {return "ProcessCommands";};
-            int getPriority() override {return 9000;};
+            int getPriority() override {return 1000;};
             boost::asio::awaitable<void> run(double deltaTime) override;
             virtual bool checkHooks(entt::entity ent, std::unordered_map<std::string, std::string>& input);
             virtual bool checkCommands(entt::entity ent, std::unordered_map<std::string, std::string>& input);
             virtual void handleNotFound(entt::entity ent, std::unordered_map<std::string, std::string>& input);
             virtual void handleBadMatch(entt::entity ent, std::unordered_map<std::string, std::string>& input);
         };
+
+        class ProcessMovement : public System {
+        public:
+            std::string_view getName() override {return "ProcessMovement";};
+            int getPriority() override {return 8000;};
+            boost::asio::awaitable<void> run(double deltaTime) override;
+        };
+
+        class ProcessLook : public System {
+        public:
+            std::string_view getName() override {return "ProcessLook";};
+            int getPriority() override {return 8500;};
+            boost::asio::awaitable<void> run(double deltaTime) override;
+        };
+
+        void registerBaseSystems();
 
 }

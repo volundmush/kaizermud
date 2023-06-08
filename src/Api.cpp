@@ -35,88 +35,6 @@ namespace kaizer {
 
     ApiCall<ObjectID> getID(defaultGetID);
 
-    Type* defaultGetType(entt::entity ent, std::string_view name) {
-        auto &info = registry.get<ObjectInfo>(ent);
-        auto it = info.types.find(std::string(name));
-        if(it == info.types.end()) {
-            return nullptr;
-        }
-        return it->second;
-    }
-
-    ApiCall<Type*, std::string_view> getType(defaultGetType);
-
-
-    OpResult<> defaultAddType(entt::entity ent, std::string_view key) {
-        if(key.empty()) {
-            return {false, "Key cannot be empty"};
-        }
-        auto k = std::string(key);
-        auto found = typeRegistry.find(k);
-        if(found == typeRegistry.end()) {
-            return {false, "Type does not exist"};
-        }
-        auto t = found->second;
-        auto &info = registry.get<ObjectInfo>(ent);
-        if(info.types.find(k) != info.types.end()) {
-            return {false, "Type already set"};
-        }
-        info.types[k] = t.get();
-        info.doSort();
-        t->onAdd(ent);
-        return {true, std::nullopt};
-    }
-
-    ApiCall<OpResult<>, std::string_view> addType(defaultAddType);
-
-
-    // Strings
-    OpResult<> defaultSetString(entt::entity ent, std::string_view key, std::string_view value) {
-        if(key.empty()) {
-            return {false, "Key cannot be empty"};
-        }
-        if(value.empty()) {
-            return clearString(ent, key);
-        }
-
-        auto &sc = registry.get_or_emplace<Strings>(ent);
-        sc.data[std::string(key)] = intern(value);
-        return {true, std::nullopt};
-
-    }
-
-    ApiCall<OpResult<>, std::string_view, std::string_view> setString(defaultSetString);
-
-    OpResult<> defaultClearString(entt::entity ent, std::string_view key) {
-        if(key.empty()) {
-            return {false, "Key cannot be empty"};
-        }
-        auto &sc = registry.get_or_emplace<Strings>(ent);
-        sc.data.erase(std::string(key));
-        return {true, std::nullopt};
-    }
-
-    ApiCall<OpResult<>, std::string_view> clearString(defaultClearString);
-
-
-    std::optional<std::string_view> defaultGetString(entt::entity ent, std::string_view key) {
-        if(key.empty()) {
-            return std::nullopt;
-        }
-        auto sc = registry.try_get<Strings>(ent);
-        if(!sc) {
-            return std::nullopt;
-        }
-        auto it = sc->data.find(std::string(key));
-        if(it == sc->data.end()) {
-            return std::nullopt;
-        }
-        return it->second;
-    }
-
-    ApiCall<std::optional<std::string_view>, std::string_view> getString(defaultGetString);
-
-
     // Integers
     OpResult<> defaultSetInteger(entt::entity ent, std::string_view key, int64_t value) {
         if(key.empty()) {
@@ -160,177 +78,72 @@ namespace kaizer {
 
     ApiCall<std::optional<int64_t>, std::string_view> getInteger(defaultGetInteger);
 
-    // Relations
-    OpResult<> defaultSetRelation(entt::entity ent, std::string_view name, entt::entity target) {
-        auto &rel = registry.get_or_emplace<Relations>(ent);
-        auto key = std::string(name);
-        auto exist = rel.data.find(key);
-        if(exist != rel.data.end()) {
-            auto [removed, whynot] = clearRelation(ent, key);
-            if(!removed) {
-                return {false, whynot};
+    // Location
+    void defaultSetLocation(entt::entity ent, entt::entity loc) {
+        auto &locInfo = registry.get_or_emplace<Location>(ent);
+        if(registry.valid(locInfo.data)) {
+            // remove ent from old location's contents.
+            auto &oldLocCon = registry.get_or_emplace<Contents>(locInfo.data);
+            auto it = std::find_if(oldLocCon.data.begin(), oldLocCon.data.end(), [ent](auto e) {
+                return e == ent;
+            });
+            if(it != oldLocCon.data.end()) {
+                oldLocCon.data.erase(it);
+            }
+            if(oldLocCon.data.empty()) {
+                registry.remove<Contents>(locInfo.data);
             }
         }
-        rel.data[key] = {target};
-        auto &rev = registry.get_or_emplace<ReverseRelations>(target);
-        rev.data[key].push_back(ent);
-        return {true, std::nullopt};
+        if(registry.valid(loc)) {
+            // add ent to new location's contents.
+            auto &newLocCon = registry.get_or_emplace<Contents>(loc);
+            newLocCon.data.push_back(ent);
+        } else {
+            registry.remove<Location>(ent);
+        }
     }
-
-    ApiCall<OpResult<>, std::string_view, entt::entity> setRelation(defaultSetRelation);
-
-    OpResult<> defaultClearRelation(entt::entity ent, std::string_view name) {
-        auto rel = registry.try_get<Relations>(ent);
-        if(!rel) {
-            return {true, std::nullopt};
-        }
-        auto key = std::string(name);
-        auto it = rel->data.find(key);
-        if(it == rel->data.end()) {
-            return {true, std::nullopt};
-        }
-        auto found = it->second;
-        rel->data.erase(it);
-        auto rev = registry.try_get<ReverseRelations>(it->second);
-        if(rev) {
-            auto &vec = rev->data[key];
-            vec.erase(std::remove(vec.begin(), vec.end(), ent), vec.end());
-        }
-        return {true, std::nullopt};
-    }
-
-    ApiCall<OpResult<>, std::string_view> clearRelation(defaultClearRelation);
-
-
-    entt::entity defaultGetRelation(entt::entity ent, std::string_view name) {
-        auto rel = registry.try_get<Relations>(ent);
-        if(!rel) {
-            return entt::null;
-        }
-        auto it = rel->data.find(std::string(name));
-        if(it == rel->data.end()) {
-            return entt::null;
-        }
-        return it->second;
-    }
-
-    ApiCall<entt::entity, std::string_view> getRelation(defaultGetRelation);
-
-    std::optional<std::reference_wrapper<const std::vector<entt::entity>>> defaultGetReverseRelation(entt::entity ent, std::string_view name) {
-        auto rev = registry.try_get<ReverseRelations>(ent);
-        if(!rev) {
-            return std::nullopt;
-        }
-        auto it = rev->data.find(std::string(name));
-        if(it == rev->data.end()) {
-            return std::nullopt;
-        }
-        return std::cref(it->second);
-    }
-
-    ApiCall<std::optional<std::reference_wrapper<const std::vector<entt::entity>>>, std::string_view> getReverseRelation(defaultGetReverseRelation);
-
-
-    OpResult<> defaultSetAspectPointer(entt::entity ent, Aspect* asp) {
-        auto &comp = registry.get_or_emplace<Aspects>(ent);
-
-        auto &slotData = comp.data[std::string(asp->getSlot())];
-        if(slotData) {
-            slotData->onRemove(ent);
-        }
-        slotData = asp;
-        slotData->onAdd(ent);
-        return {true, std::nullopt};
-    }
-
-    ApiCall<OpResult<>, Aspect*> setAspectPointer(defaultSetAspectPointer);
-
-
-    // Aspects
-    Aspect* defaultGetAspect(entt::entity ent, std::string_view name) {
-        auto comp = registry.try_get<Aspects>(ent);
-        if(!comp) {
-            return nullptr;
-        }
-        auto it = comp->data.find(std::string(name));
-        if(it == comp->data.end()) {
-            return nullptr;
-        }
-        return it->second;
-    }
-
-    ApiCall<Aspect*, std::string_view> getAspect(defaultGetAspect);
-
-    std::set<std::string> defaultGetAspectSlots(entt::entity ent) {
-        auto &objinfo = registry.get<ObjectInfo>(ent);
-        std::set<std::string> out;
-        for(auto &type : objinfo.sortedTypes) {
-            auto aspectSlots = type->getAspectSlots();
-            out.insert(aspectSlots.begin(), aspectSlots.end());
-        }
-        return out;
-    }
-
-    ApiCall<std::set<std::string>> getAspectSlots(defaultGetAspectSlots);
-
-    OpResult<> defaultSetAspect(entt::entity ent, std::string_view name, std::string_view value) {
-        auto &objinfo = registry.get<ObjectInfo>(ent);
-        auto slots = getAspectSlots(ent);
-        auto slotIt = slots.find(boost::to_lower_copy(std::string(name)));
-        if(slotIt == slots.end()) {
-            return {false, "No such aspect slot"};
-        }
-        const auto& s = *slotIt;
-
-        auto aspectsIt = aspectRegistry.find(s);
-        if(aspectsIt == aspectRegistry.end()) {
-            return {false, "No no aspects found for that slot."};
-        }
-
-        auto available = aspectsIt->second;
-
-        auto it = available.find(boost::to_lower_copy(std::string(value)));
-        if(it == available.end()) {
-            return {false, "No such aspect."};
-        }
-
-        return setAspectPointer(ent, it->second.get());
-    }
-
-    ApiCall<OpResult<>, std::string_view, std::string_view> setAspect(defaultSetAspect);
+    ApiCall<void, entt::entity> setLocation(defaultSetLocation);
 
     // Commands
     std::vector<std::pair<std::string, Command*>> defaultGetSortedCommands(entt::entity ent) {
-        auto &cache = registry.get_or_emplace<CommandCache>(ent);
-        if(!cache.sortedCommands.empty())
+        auto &objinfo = registry.get<ObjectInfo>(ent);
+        auto &scache = sortedCommandCache[objinfo.typeFlags.to_ulong()];
+        if(!scache.empty())
             // Hooray, the cache exists, so we'll use it.
-            return cache.sortedCommands;
+            return scache;
         // The cache doesn't exist so we'll have to create it.
+        auto cache = getCommands(ent);
 
-        auto commands = getCommands(ent);
-        return cache.sortedCommands;
+        scache.reserve(cache.size());
+        for(auto &[key, cmd] : cache) {
+            scache.emplace_back(key, cmd);
+        }
+        std::sort(scache.begin(), scache.end(), [](auto &a, auto &b) {
+            return a.second->getPriority() < b.second->getPriority();
+        });
+
+        return scache;
     }
 
     ApiCall<std::vector<std::pair<std::string, Command*>>> getSortedCommands(defaultGetSortedCommands);
 
     std::unordered_map<std::string, Command*> defaultGetCommands(entt::entity ent) {
-        auto &cache = registry.get_or_emplace<CommandCache>(ent);
-        if (!cache.commands.empty())
-            // Hooray, the cache exists, so we'll use it.
-            return cache.commands;
-        // The cache doesn't exist so we'll have to create it.
         auto &objinfo = registry.get<ObjectInfo>(ent);
-        auto &out = cache.commands;
-        for (auto &type: objinfo.sortedTypes) {
-            auto commands = expandedCommandRegistry.find(std::string(type->getKey()));
+        auto &cache = commandCache[objinfo.typeFlags.to_ulong()];
+        if (!cache.empty())
+            // Hooray, the cache exists, so we'll use it.
+            return cache;
+        // The cache doesn't exist so we'll have to create it.
+
+        for (auto i = 0; i < objinfo.typeFlags.size(); i++) {
+            auto commands = expandedCommandRegistry.find(i);
             if (commands == expandedCommandRegistry.end())
                 continue;
             for (auto &[key, cmd]: commands->second) {
-                out[key] = cmd.get();
+                cache[key] = cmd.get();
             }
         }
-        cache.sortCommands();
-        return out;
+        return cache;
     }
 
     ApiCall<std::unordered_map<std::string, Command*>> getCommands(defaultGetCommands);
@@ -362,7 +175,6 @@ namespace kaizer {
         if(!canMove) {
             return {false, reas};
         }
-
 
         if(registry.valid(loc)) {
             auto [canLeave, reason] = atPreObjectLeave(loc, param);
@@ -399,11 +211,11 @@ namespace kaizer {
         if(registry.valid(loc)) {
             atObjectLeave(loc, param);
             if(!quiet) announceMoveFrom(ent, param);
-            clearRelation(ent, "location");
+            setLocation(ent, entt::null);
         }
 
         if(registry.valid(dest)) {
-            setRelation(ent, "location", dest);
+            setLocation(ent, dest);
             atObjectReceive(dest, param);
             if(!quiet) announceMoveTo(ent, param);
         }
@@ -490,10 +302,6 @@ namespace kaizer {
                 spdlog::error("Could not find {} location {} for unstow of Entity {}", name, id, getID(ent));
                 continue;
             }
-            if(!getType(found->second, "room")) {
-                spdlog::error("Location {} for unstow of Entity {} is not a room", id, getID(ent));
-                continue;
-            }
             return {found->second, name};
         }
         return {entt::null, "nowhere"};
@@ -521,8 +329,8 @@ namespace kaizer {
 
     // Look / Appearance
     std::string defaultGetDisplayName(entt::entity ent, entt::entity looker) {
-        auto name = getString(ent, "name");
-        if(name.has_value()) return std::string(name.value());
+        auto name = registry.try_get<components::Name>(ent);
+        if(name) return std::string(name->data);
         return fmt::format("Unnamed Object {}", getID(ent));
     }
     ApiCall<std::string, entt::entity> getDisplayName(defaultGetDisplayName);
@@ -557,13 +365,13 @@ namespace kaizer {
     std::string defaultRenderAppearance(entt::entity ent, entt::entity looker) {
         std::vector<std::string> lines;
         lines.emplace_back(getDisplayName(ent, looker));
-        auto desc = getString(ent, "look_description");
-        if(desc.has_value()) {
-            lines.emplace_back(desc.value());
+        auto ldesc = registry.try_get<components::LookDescription>(ent);
+        if(ldesc) {
+            lines.emplace_back(ldesc->data);
         }
-        auto rev = getReverseRelation(ent, "location");
-        if(rev.has_value()) {
-            for(auto e : rev.value().get()) {
+        auto con = registry.try_get<components::Contents>(ent);
+        if(con) {
+            for(auto &e : con->data) {
                 if(e == looker) continue;
                 if(lines.empty()) {
                     lines.emplace_back("Contents:");

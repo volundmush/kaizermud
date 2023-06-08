@@ -56,21 +56,13 @@ namespace kaizer {
     nlohmann::json serializeObject(entt::entity ent, bool asPrototype) {
         nlohmann::json j;
         auto &objinfo = registry.get<components::ObjectInfo>(ent);
-        for(const auto&[key, type] : objinfo.types) {
-            j["types"].push_back(key);
-        }
+        j["Types"] = objinfo.typeFlags.to_ulong();
 
         if(!asPrototype) {
             auto account = registry.try_get<components::Account>(ent);
             if(account) {
                 j["account"] = account->serialize();
             }
-        }
-
-        auto aspects = registry.try_get<components::Aspects>(ent);
-        if(aspects) {
-            for(auto &[slot, asp] : aspects->data)
-                j["aspects"][slot] = asp->getKey();
         }
 
         auto quirks = registry.try_get<components::Quirks>(ent);
@@ -80,10 +72,24 @@ namespace kaizer {
                     j["quirks"][slot].push_back(key);
         }
 
-        auto strings = registry.try_get<components::Strings>(ent);
-        if(strings) {
-            for(auto &[key, value] : strings->data)
-                j["strings"][key] = value;
+        auto name = registry.try_get<components::Name>(ent);
+        if(name) {
+            j["Name"] = std::string(name->data);
+        }
+
+        auto ldesc = registry.try_get<components::LookDescription>(ent);
+        if(ldesc) {
+            j["LookDescription"] = std::string(ldesc->data);
+        }
+
+        auto sdesc = registry.try_get<components::ShortDescription>(ent);
+        if(sdesc) {
+            j["ShortDescription"] = std::string(sdesc->data);
+        }
+
+        auto rdesc = registry.try_get<components::RoomDescription>(ent);
+        if(rdesc) {
+            j["RoomDescription"] = std::string(rdesc->data);
         }
 
         auto ints = registry.try_get<components::Integers>(ent);
@@ -111,10 +117,13 @@ namespace kaizer {
                     j["equipment"][slot] = getID(item);
             }
 
-            auto rel = registry.try_get<components::Relations>(ent);
-            if(rel) {
-                for(auto &[key, value] : rel->data)
-                    j["relations"][key] = getID(value);
+
+            auto ex = registry.try_get<components::Exit>(ent);
+            if(ex) {
+                nlohmann::json exdata;
+                exdata["location"] = getID(ex->location);
+                exdata["destination"] = getID(ex->destination);
+                j["Exit"] = exdata;
             }
         }
 
@@ -147,21 +156,30 @@ namespace kaizer {
             auto &account = registry.emplace<components::Account>(ent, j["account"]);
         }
 
-        if(j.count("types")) {
+        if(j.count("Types")) {
             auto &objinfo = registry.get_or_emplace<components::ObjectInfo>(ent);
-            for(const auto& type : j["types"]) {
-                auto found = typeRegistry.find(type.get<std::string>());
-                if(found != typeRegistry.end()) {
-                    objinfo.types[std::string(found->second->getKey())] = found->second.get();
-                }
-            }
-            objinfo.doSort();
+            std::bitset<32> bits(j["Types"].get<unsigned long>());
+            objinfo.typeFlags = bits;
         }
 
-        if(j.count("strings")) {
-            auto &strings = registry.get_or_emplace<components::Strings>(ent);
-            for(auto &[key, value] : j["strings"].items())
-                strings.data[key] = intern(value.get<std::string>());
+        if(j.count("Name")) {
+            auto &comp = registry.get_or_emplace<components::Name>(ent);
+            comp.data = intern(j["Name"].get<std::string>());
+        }
+
+        if(j.count("ShortDescription")) {
+            auto &comp = registry.get_or_emplace<components::ShortDescription>(ent);
+            comp.data = intern(j["ShortDescription"].get<std::string>());
+        }
+
+        if(j.count("LookDescription")) {
+            auto &comp = registry.get_or_emplace<components::LookDescription>(ent);
+            comp.data = intern(j["LookDescription"].get<std::string>());
+        }
+
+        if(j.count("RoomDescription")) {
+            auto &comp = registry.get_or_emplace<components::RoomDescription>(ent);
+            comp.data = intern(j["RoomDescription"].get<std::string>());
         }
 
         if(j.count("integers")) {
@@ -180,23 +198,6 @@ namespace kaizer {
             auto &stats = registry.get_or_emplace<components::Stats>(ent);
             for(auto &[key, value] : j["stats"].items())
                 stats.data[key] = value.get<double>();
-        }
-
-        if(j.count("aspects")) {
-            auto &aspects = registry.get_or_emplace<components::Aspects>(ent);
-            for(auto &[slot, key] : j["aspects"].items()) {
-                auto foundslot = aspectRegistry.find(slot);
-                if(foundslot == aspectRegistry.end()) {
-                    spdlog::warn("Unknown aspect slot {}", slot);
-                    continue;
-                }
-                auto asp = foundslot->second;
-                auto k = key.get<std::string>();
-                auto found = asp.find(k);
-                if(found != asp.end()) {
-                    aspects.data[slot] = found->second.get();
-                }
-            }
         }
 
         if(j.count("quirks")) {
@@ -223,10 +224,35 @@ namespace kaizer {
             }
         }
 
+        if(j.count("Location")) {
+            auto it = entities.find(j["Location"].get<ObjectID>());
+            setLocation(ent, it->second);
+        }
+
         if(j.count("relations")) {
             for(auto &[key, id] : j["relations"].items()) {
                 auto it = entities.find(id.get<int64_t>());
                 setRelation(ent, key, it->second);
+            }
+        }
+
+        if(j.count("Exit")) {
+            auto exdata = j["Exit"];
+            auto loc = entities.find(exdata["location"].get<ObjectID>());
+            if(loc != entities.end()) {
+                auto location = loc->second;
+                auto dest = entities.find(exdata["destination"].get<ObjectID>());
+                if(dest != entities.end()) {
+                    auto destination = dest->second;
+                    auto &ex = registry.emplace<components::Exit>(ent);
+                    ex.location = location;
+                    ex.destination = destination;
+                    auto name = getDisplayName(ent, ent);
+                    auto &exits = registry.get_or_emplace<components::Exits>(location);
+                    exits.data[name] = ent;
+                    auto &entra = registry.get_or_emplace<components::Entrances>(destination);
+                    entra.data[name] = ent;
+                }
             }
         }
 

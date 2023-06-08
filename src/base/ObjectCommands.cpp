@@ -59,6 +59,7 @@ namespace kaizer::base {
         } else {
             dir = cmd;
         }
+        boost::to_lower(dir);
 
         // now that we have a dir, we check to see if it is in exitAliases and replace it if so.
         auto it = exitAliases.find(dir);
@@ -68,17 +69,16 @@ namespace kaizer::base {
 
         // Now we have a direction. We need to find the exit that matches it.
         auto loc = getRelation(ent, "location");
-        auto exits = getReverseRelation(loc, "exit");
-        if (!exits.has_value()) {
+        auto exits = registry.try_get<components::Exits>(loc);
+        if (exits->data.empty()) {
             sendText(ent, "You can't go anywhere from here.");
             return;
         }
-        auto ex = exits.value().get();
+
+        auto &ex = exits->data;
 
         // Now we have a list of exits. We need to find the one that matches the direction.
-        auto exit = std::find_if(ex.begin(), ex.end(), [&](auto e) {
-            return boost::iequals(getDisplayName(e, ent), dir);
-        });
+        auto exit = ex.find(dir);
 
         if (exit == ex.end()) {
             sendText(ent, "You can't go that way.");
@@ -88,8 +88,9 @@ namespace kaizer::base {
         // Now that we have an exit, we schedule the move.
         CallParameters param;
         param.setEntity("mover", ent);
-        param.setEntity("exit", *exit);
-        param.setEntity("destination", getRelation(*exit, "destination"));
+        param.setEntity("exit", exit->second);
+        auto &exdata = registry.get<components::Exit>(exit->second);
+        param.setEntity("destination", exdata.destination);
         param.setString("moveType", "move");
 
         auto &pmove = registry.get_or_emplace<components::PendingMove>(ent);

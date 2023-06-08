@@ -12,15 +12,16 @@ namespace kaizer::base {
 
     OpResult<> characterAtPreMove(entt::entity ent, const CallParameters& param) {
         auto dest = param.getEntity("destination");
-        if(getType(dest, "character")) {
+        auto &oinfo = registry.get<components::ObjectInfo>(ent);
+        if(oinfo.typeFlags.test(2)) {
             return {false, "A character cannot be moved into another character!"};
         }
         return {true, std::nullopt};
     }
 
     void registerBaseAPI() {
-        atPreMove.setOverride("room", roomAtPreMove);
-        atPreMove.setOverride("exit", exitAtPreMove);
-        atPreMove.setOverride("character", characterAtPreMove);
+        atPreMove.setOverride(3, roomAtPreMove);
+        atPreMove.setOverride(4, exitAtPreMove);
+        atPreMove.setOverride(2, characterAtPreMove);
     }
 }

@@ -25,7 +25,7 @@ namespace kaizer::base {
         }
 
         auto c = partialMatch(name, characters.begin(), characters.end(), false, [](auto &c) {
-            return std::string(getString(c, "name").value_or(""));
+            return getDisplayName(c, c);
         });
 
         if(!c.has_value()) {

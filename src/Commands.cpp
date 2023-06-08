@@ -37,16 +37,15 @@ namespace kaizer {
         spdlog::warn("Command {} not implemented", input["cmd"]);
     }
 
-    std::unordered_map<std::string, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry, expandedCommandRegistry;
+    std::map<unsigned long, std::vector<std::pair<std::string, Command*>>> sortedCommandCache;
+    std::map<unsigned long, std::unordered_map<std::string, Command*>> commandCache;
+    std::unordered_map<uint8_t, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry, expandedCommandRegistry;
 
     OpResult<> registerCommand(const std::shared_ptr<Command>& entry) {
-        if(entry->getType().empty()) {
-            return {false, "CommandEntry Type cannot be empty"};
-        }
         if(entry->getCmdName().empty()) {
             return {false, "CommandEntry cmdName cannot be empty"};
         }
-        auto &reg = commandRegistry[std::string(entry->getType())];
+        auto &reg = commandRegistry[entry->getType()];
         reg[std::string(entry->getCmdName())] = entry;
         return {true, std::nullopt};
     }

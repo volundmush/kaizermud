@@ -16,23 +16,22 @@ namespace kaizer {
 
     private:
         FunctionType baseCase;
-        std::unordered_map<std::string, FunctionType> overrides;
+        std::map<uint8_t, FunctionType> overrides;
 
     public:
         ApiCall() = default;
         explicit ApiCall(FunctionType baseCaseFunc) : baseCase(std::move(baseCaseFunc)) {}
 
-        void setOverride(std::string objType, FunctionType func) {
-            overrides[std::move(objType)] = std::move(func);
+        void setOverride(uint8_t objType, FunctionType func) {
+            overrides[objType] = std::move(func);
         }
 
         ResultType execute(entt::entity e, Args... args) {
             auto &info = registry.get<components::ObjectInfo>(e);
             // check by specific type, then by general type...
-            for(const auto &type : info.sortedTypes) {
-                auto it = overrides.find(std::string(type->getKey()));
-                if(it != overrides.end()) {
-                    return it->second(e, args...);
+            for(auto rit = overrides.rbegin(); rit != overrides.rend(); ++rit) {
+                if(info.typeFlags.test(rit->first)) {
+                    return rit->second(e, args...);
                 }
             }
             return baseCase(e, args...);
@@ -47,9 +46,6 @@ namespace kaizer {
     extern ApiCall<void> atCreate;
     void defaultAtCreate(entt::entity ent);
 
-    extern ApiCall<Type*, std::string_view> getType;
-    Type* defaultGetType(entt::entity ent, std::string_view name);
-
     extern ApiCall<OpResult<>, std::string_view> addType;
     OpResult<> defaultAddType(entt::entity ent, std::string_view key);
 
@@ -63,15 +59,6 @@ namespace kaizer {
     extern ApiCall<ObjectID> getID;
     ObjectID defaultGetID(entt::entity ent);
 
-    // Strings
-    extern ApiCall<OpResult<>, std::string_view, std::string_view> setString;
-    extern ApiCall<OpResult<>, std::string_view> clearString;
-    extern ApiCall<std::optional<std::string_view>, std::string_view> getString;
-
-    OpResult<> defaultSetString(entt::entity ent, std::string_view, std::string_view);
-    OpResult<> defaultClearString(entt::entity ent, std::string_view);
-    std::optional<std::string_view> defaultGetString(entt::entity ent, std::string_view);
-
     // Integers
     extern ApiCall<OpResult<>, std::string_view, int64_t> setInteger;
     extern ApiCall<OpResult<>, std::string_view> clearInteger;
@@ -80,6 +67,10 @@ namespace kaizer {
     OpResult<> defaultSetInteger(entt::entity ent, std::string_view, int64_t);
     OpResult<> defaultClearInteger(entt::entity ent, std::string_view);
     std::optional<int64_t> defaultGetInteger(entt::entity ent, std::string_view);
+
+    // Location
+    extern ApiCall<void, entt::entity> setLocation;
+    void defaultSetLocation(entt::entity ent, entt::entity loc);
 
     // Relations
     extern ApiCall<OpResult<>, std::string_view, entt::entity> setRelation;
@@ -91,18 +82,7 @@ namespace kaizer {
     entt::entity defaultGetRelation(entt::entity ent, std::string_view name);
     std::optional<std::reference_wrapper<const std::vector<entt::entity>>> defaultGetReverseRelation(entt::entity ent, std::string_view name);
 
-    // Aspects
-    extern ApiCall<OpResult<>, std::string_view, std::string_view> setAspect;
-    extern ApiCall<Aspect*, std::string_view> getAspect;
-    Aspect* defaultGetAspect(entt::entity ent, std::string_view name);
 
-    extern ApiCall<OpResult<>, Aspect*> setAspectPointer;
-    OpResult<> defaultSetAspectPointer(entt::entity ent, Aspect* asp);
-
-    OpResult<> defaultSetAspect(entt::entity ent, std::string_view name, std::string_view value);
-
-    extern ApiCall<std::set<std::string>> getAspectSlots;
-    std::set<std::string> defaultGetAspectSlots(entt::entity ent);
 
     // Commands
     extern ApiCall<std::vector<std::pair<std::string, Command*>>> getSortedCommands;

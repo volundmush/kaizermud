@@ -14,18 +14,6 @@ namespace kaizer {
 
     }
 
-    int Type::getSortPriority() const {
-        return 0;
-    }
-
-    std::vector<std::string> Type::getAspectSlots() const {
-        return {};
-    }
-
-    std::vector<std::string> Type::getQuirkSlots() const {
-        return {};
-    }
-
     std::vector<std::string> Type::getStatSlots() const {
         return {};
     }
@@ -34,7 +22,13 @@ namespace kaizer {
         return {};
     }
 
+    std::vector<std::shared_ptr<Type>> typeRegistry;
 
-    std::unordered_map<std::string, std::shared_ptr<Type>> typeRegistry;
+    void registerType(const std::shared_ptr<Type>& entry) {
+        while(typeRegistry.size() < entry->getID() + 1) {
+            typeRegistry.emplace_back(nullptr);
+        }
+        typeRegistry[entry->getID()] = entry;
+    }
 
 }

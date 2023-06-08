@@ -5,7 +5,7 @@
 namespace kaizer::base {
 
     struct AdmCmd : Command {
-        [[nodiscard]] std::string_view getType() override {return "object";};
+        [[nodiscard]] uint8_t getType() override {return 0;};
     };
 
     struct AdmTeleport : AdmCmd {

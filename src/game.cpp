@@ -46,22 +46,36 @@ namespace kaizer {
 
     boost::asio::awaitable<void> run() {
         co_await load();
-
+        auto hb = std::chrono::milliseconds(100);
         auto previousTime = boost::asio::steady_timer::clock_type::now();
-        boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor, 100ms);
+        boost::asio::steady_timer timer(co_await boost::asio::this_coro::executor, hb);
 
         while(true) {
+            auto timeStart = boost::asio::steady_timer::clock_type::now();
             co_await timer.async_wait(boost::asio::use_awaitable);
-            auto currentTime = boost::asio::steady_timer::clock_type::now();
-            auto deltaTime = currentTime - previousTime;
+            auto timeEnd = boost::asio::steady_timer::clock_type::now();
+
+            auto deltaTime = timeEnd - timeStart;
             double deltaTimeInSeconds = std::chrono::duration<double>(deltaTime).count();
-            previousTime = currentTime;
+
             try {
                 co_await heartbeat(deltaTimeInSeconds);
             } catch(std::exception& e) {
                 std::cerr << "Exception in heartbeat: " << e.what() << std::endl;
             }
+
+            auto timeAfterHeartbeat = boost::asio::steady_timer::clock_type::now();
+            auto elapsed = timeAfterHeartbeat - timeStart;
+            auto nextWait = hb - elapsed;
+
+            // If heartbeat takes more than 100ms, default to a very short wait
+            if(nextWait.count() < 0) {
+                nextWait = std::chrono::milliseconds(1);
+            }
+
+            timer.expires_from_now(nextWait);
         }
+
         // todo: figure out a shutdown / restart routine.
         co_return;
     }

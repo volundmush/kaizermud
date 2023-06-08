@@ -155,9 +155,9 @@ namespace kaizer {
         }
 
         for(auto c : containers) {
-            auto rev = getReverseRelation(c, "location");
-            if(rev.has_value()) {
-                for(auto e : rev.value().get()) {
+            auto con = registry.try_get<components::Contents>(c);
+            if(con) {
+                for(auto e : con->data) {
                     if(e == ent) continue;
                     if(!senses.empty() && !detect(e)) continue;
                     // in Aster mode, we just grab ALL items found...

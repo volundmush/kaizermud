@@ -297,11 +297,7 @@ namespace kaizer {
         if(!characters.empty()) {
             sendText("[@y----@YAvailable Characters@y----@n]\n");
             for(auto ent : characters) {
-                auto name = getString(ent, "name");
-                if(name.has_value())
-                    sendText(std::string(name.value()) + "\n");
-                else
-                    sendText("Unnamed Character\n");
+                sendText(getDisplayName(ent, ent) + "\n");
             }
         }
 

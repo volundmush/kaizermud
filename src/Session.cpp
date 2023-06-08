@@ -1,6 +1,8 @@
 #include "kaizermud/Session.h"
 #include "kaizermud/game.h"
 #include "kaizermud/Components.h"
+#include "kaizermud/Api.h"
+#include "fmt/format.h"
 
 namespace kaizer {
 
@@ -13,11 +15,15 @@ namespace kaizer {
     }
 
     void Session::start() {
-
+        sendText(fmt::format("You have joined the game as {}\n", getDisplayName(character, character)));
+        unstowCharacter(character);
     }
 
     void Session::end() {
-
+        if(puppet != character) {
+            changePuppet(character);
+        }
+        stowCharacter(character);
     }
 
     void Session::send(const Message &msg) {
@@ -87,7 +93,7 @@ namespace kaizer {
     }
 
     void Session::onFirstConnection() {
-
+        start();
     }
 
     void Session::removeConnection(uint64_t connID) {

@@ -5,7 +5,7 @@ namespace kaizer::base {
 
     // Object Commands.
     struct ObjCmd : Command {
-        [[nodiscard]] std::string_view getType() override {return "object";};
+        [[nodiscard]] uint8_t getType() override {return 0;};
     };
 
     /*

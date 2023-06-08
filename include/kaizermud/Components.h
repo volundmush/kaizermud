@@ -1,6 +1,5 @@
 #pragma once
 #include "kaizermud/base.h"
-#include "kaizermud/Aspects.h"
 #include "kaizermud/Quirks.h"
 #include "kaizermud/Equip.h"
 #include "kaizermud/Session.h"
@@ -8,14 +7,13 @@
 #include "kaizermud/Commands.h"
 #include "nlohmann/json.hpp"
 #include "kaizermud/CallParameters.h"
+#include <bitset>
 
 namespace kaizer::components {
 
     struct ObjectInfo {
         ObjectID id{-1};
-        std::unordered_map<std::string, Type*> types{};
-        std::vector<Type*> sortedTypes{};
-        void doSort();
+        std::bitset<32> typeFlags{};
     };
 
     struct Account {
@@ -39,10 +37,6 @@ namespace kaizer::components {
         void deserialize(const nlohmann::json& j);
     };
 
-    struct Aspects {
-        std::unordered_map<std::string, Aspect*> data{};
-    };
-
     struct Quirks {
         std::unordered_map<std::string, std::unordered_map<std::string, Quirk*>> data{};
     };
@@ -51,8 +45,20 @@ namespace kaizer::components {
         std::unordered_map<std::string, entt::entity> data{};
     };
 
-    struct Strings {
-        std::unordered_map<std::string, std::string_view> data{};
+    struct Name {
+        std::string_view data{};
+    };
+
+    struct LookDescription {
+        std::string_view data{};
+    };
+
+    struct RoomDescription {
+        std::string_view data{};
+    };
+
+    struct ShortDescription {
+        std::string_view data{};
     };
 
     struct Integers {
@@ -67,12 +73,25 @@ namespace kaizer::components {
         std::unordered_map<std::string, double> data{};
     };
 
-    struct Relations {
+    struct Location {
+        entt::entity data{entt::null};
+    };
+
+    struct Contents {
+        std::vector<entt::entity> data{};
+    };
+
+    struct Exit {
+        entt::entity location{entt::null};
+        entt::entity destination{entt::null};
+    };
+
+    struct Exits {
         std::unordered_map<std::string, entt::entity> data{};
     };
 
-    struct ReverseRelations {
-        std::unordered_map<std::string, std::vector<entt::entity>> data{};
+    struct Entrances {
+        std::unordered_map<std::string, entt::entity> data{};
     };
 
     struct SavedLocations {
@@ -83,12 +102,6 @@ namespace kaizer::components {
         // 0 is no session, 1 is main puppet, 2 is sub puppet
         uint8_t sessionMode{0};
         std::shared_ptr<Session> data;
-    };
-
-    struct CommandCache {
-        std::unordered_map<std::string, Command*> commands{};
-        std::vector<std::pair<std::string, Command*>> sortedCommands{};
-        void sortCommands();
     };
 
     // Systems and game state components below...

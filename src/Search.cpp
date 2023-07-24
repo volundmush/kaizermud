@@ -1,18 +1,20 @@
 #include "kaizermud/Search.h"
-#include "kaizermud/Api.h"
 #include "boost/algorithm/string.hpp"
+#include "kaizermud/Database.h"
+#include "kaizermud/Types.h"
+#include "kaizermud/Components.h"
 
 namespace kaizer {
-    Search::Search(entt::entity ent) : ent(ent) {
+    Search::Search(ObjectID id) : id(id) {
 
     }
 
-    Search& Search::in(entt::entity container) {
-        containers.push_back(container);
+    Search& Search::in(ObjectID con) {
+        containers.push_back(con);
         return *this;
     }
 
-    Search& Search::eq(entt::entity equipment) {
+    Search& Search::eq(ObjectID equipment) {
         equipments.push_back(equipment);
         return *this;
     }
@@ -47,44 +49,49 @@ namespace kaizer {
         return *this;
     }
 
-    OpResult<entt::entity> Search::_simplecheck(std::string_view name) {
+    OpResult<ObjectID> Search::_simplecheck(const std::string& name) {
         if(allowSelf) {
             if(boost::iequals(name, "self") || boost::iequals(name, "me"))
-                return {ent, "self check"};
+                return {id, "self check"};
         }
         if(allowHere && boost::iequals(name, "here")) {
-            return {getRelation(ent, "location"), "Location check"};
+            auto t = getType(id);
+            return {t->getRelation(id, static_cast<int>(RelationKind::Location)), "Location check"};
         }
         // if allowID, check for #ID pattern like #5 or #10 and search entities for it...
         if(allowID) {
             if (name[0] == '#') {
                 try {
-                    auto id = std::stoll(std::string(name.substr(1)));
-                    auto found = entities.find(id);
+                    auto num = std::stoll(std::string(name.substr(1)));
+                    auto found = entities.find(num);
                     if(found != entities.end())
-                        return {found->second, "Id search"};
-                    return {entt::null, "id search"};
+                    {
+                        auto &oinfo = registry.get<components::ObjectInfo>(found->second);
+                        return {oinfo.id, "Id search"};
+                    }
+                    return {-1, "id search"};
                 } catch (std::invalid_argument &e) {
-                    return {entt::null, std::nullopt};
+                    return {-1, std::nullopt};
                 }
             }
         }
 
-        return {entt::null, std::nullopt};
+        return {-1, std::nullopt};
     }
 
-    bool Search::detect(entt::entity target) {
+    bool Search::detect(ObjectID target) {
+        auto t = getType(id);
         for(const auto& s : senses) {
-            if(canDetect(ent, target, s))
+            if(t->canDetect(id, target, s))
                 return true;
         }
         return false;
     }
 
-    std::vector<entt::entity> Search::find(std::string_view name) {
-        auto [res, handled] = _simplecheck(name);
+    std::vector<ObjectID> Search::find(const std::string& input) {
+        auto [res, handled] = _simplecheck(input);
         if(handled) {
-            if(registry.valid(res)) {
+            if(res != -1) {
                 return {res};
             } else {
                 return {};
@@ -95,16 +102,17 @@ namespace kaizer {
         // That might be 5.meat or all.meat for instance. if there's no prefix, we
         // assume it's equal to 1.meat, so to speak.
 
-        std::string_view prefix;
+        std::string prefix, name;
         int64_t num = 1;
         bool allMode = false;
 
-        auto dot = name.find('.');
+        auto dot = input.find('.');
         if(dot != std::string_view::npos) {
-            prefix = name.substr(0, dot);
-            name = name.substr(dot+1);
+            prefix = input.substr(0, dot);
+            name = input.substr(dot+1);
         } else {
             prefix = "1";
+            name = input;
         }
 
         // Now check to make sure that the prefix is either a number or the string "all".
@@ -126,20 +134,22 @@ namespace kaizer {
             if(!allowAsterisk) return {};
             aster = true;
         }
-        std::vector<entt::entity> results;
+        std::vector<ObjectID> results;
 
         for(auto c : equipments) {
-            auto eq = registry.try_get<components::Equipment>(c);
-            if(!eq) continue;
-            for(auto [slot, e] : eq->data) {
-                if(e == ent) continue;
+            auto ct = getType(c);
+            auto eq = ct->getReverseRelation(c, static_cast<int>(RelationKind::Equipment));
+
+            for(auto e : eq) {
+                if(e == id) continue;
                 if(!senses.empty() && !detect(e)) continue;
                 if(aster) {
                     results.push_back(e);
                 } else {
+                    auto et = getType(e);
                     // In allMode, we want ALL things which match name.
                     // but otherwise, we're looking for the nth instance of name.
-                    if(checkSearch(e, name, ent)) {
+                    if(et->checkSearch(e, name, id)) {
                         if(allMode) {
                             results.push_back(e);
                         } else {
@@ -155,10 +165,11 @@ namespace kaizer {
         }
 
         for(auto c : containers) {
-            auto con = registry.try_get<components::Contents>(c);
-            if(con) {
-                for(auto e : con->data) {
-                    if(e == ent) continue;
+            auto ct = getType(c);
+            auto con = ct->getReverseRelation(c, static_cast<int>(RelationKind::Location));
+            if(!con.empty()) {
+                for(auto e : con) {
+                    if(e == id) continue;
                     if(!senses.empty() && !detect(e)) continue;
                     // in Aster mode, we just grab ALL items found...
                     if(aster) {
@@ -166,7 +177,8 @@ namespace kaizer {
                     } else {
                         // In allMode, we want ALL things which match name.
                         // but otherwise, we're looking for the nth instance of name.
-                        if(checkSearch(e, name, ent)) {
+                        auto et = getType(e);
+                        if(et->checkSearch(e, name, id)) {
                             if(allMode) {
                                 results.push_back(e);
                             } else {

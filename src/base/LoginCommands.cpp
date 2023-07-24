@@ -1,21 +1,20 @@
 #include "kaizermud/base/LoginCommands.h"
 #include "kaizermud/Components.h"
 #include "kaizermud/utils.h"
-#include "kaizermud/Api.h"
+#include "kaizermud/Database.h"
 
 namespace kaizer::base {
 
     void LoginCommandPlay::execute(const std::shared_ptr<ClientConnection>& connection, std::unordered_map<std::string, std::string>& input) {
         auto acc = connection->getAccount();
-        auto &accdata = registry.get<components::Account>(acc);
-
-        std::vector<entt::entity> characters;
-        for(auto &character : accdata.characters) {
-            auto found = entities.find(character);
-            if(found == entities.end()) {
-                continue;
-            }
-            characters.push_back(found->second);
+        std::vector<std::pair<ObjectID, std::string>> characters;
+        SQLite::Statement q(*db, "SELECT character FROM playerCharacters WHERE account=?");
+        q.bind(1, acc);
+        while(q.executeStep()) {
+            auto id = q.getColumn(0).getInt64();
+            auto t = getType(id);
+            auto name = t->getDisplayName(id, id);
+            characters.emplace_back(id, name);
         }
 
         auto name = input["args"];
@@ -25,7 +24,7 @@ namespace kaizer::base {
         }
 
         auto c = partialMatch(name, characters.begin(), characters.end(), false, [](auto &c) {
-            return getDisplayName(c, c);
+            return c.second;
         });
 
         if(!c.has_value()) {
@@ -33,7 +32,7 @@ namespace kaizer::base {
             return;
         }
 
-        connection->createOrJoinSession(c.value());
+        connection->createOrJoinSession(c.value().first);
     }
 
     void LoginCommandNew::execute(const std::shared_ptr<ClientConnection> &connection,

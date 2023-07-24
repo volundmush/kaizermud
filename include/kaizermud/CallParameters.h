@@ -18,19 +18,19 @@ namespace kaizer {
         CallParameters& setBool(std::string_view name, bool val);
         CallParameters& setInt(std::string_view name, int64_t val);
         CallParameters& setDouble(std::string_view name, double val);
-        CallParameters& setEntity(std::string_view name, entt::entity ent);
+        CallParameters& setEntity(std::string_view name, ObjectID id);
 
         [[nodiscard]] std::optional<std::string_view> getString(std::string_view name) const;
         [[nodiscard]] std::optional<bool> getBool(std::string_view name) const;
         [[nodiscard]] std::optional<int64_t> getInt(std::string_view name) const;
         [[nodiscard]] std::optional<double> getDouble(std::string_view name) const;
-        [[nodiscard]] entt::entity getEntity(std::string_view name) const;
+        [[nodiscard]] ObjectID getEntity(std::string_view name) const;
 
     private:
         std::unordered_map<std::string, int64_t> ints;
         std::unordered_map<std::string, double> doubles;
         std::unordered_map<std::string, bool> bools;
         std::unordered_map<std::string, std::string_view> strings;
-        std::unordered_map<std::string, entt::entity> entities;
+        std::unordered_map<std::string, ObjectID> entities;
     };
 }

@@ -39,8 +39,7 @@ namespace kaizer {
     boost::asio::awaitable<void> load() {
         sortSystems();
         expandCommands();
-        loadLatestSave();
-
+        readyDatabase();
         co_return;
     }
 
@@ -59,7 +58,9 @@ namespace kaizer {
             double deltaTimeInSeconds = std::chrono::duration<double>(deltaTime).count();
 
             try {
+                SQLite::Transaction transaction(*db);
                 co_await heartbeat(deltaTimeInSeconds);
+                transaction.commit();
             } catch(std::exception& e) {
                 std::cerr << "Exception in heartbeat: " << e.what() << std::endl;
             }

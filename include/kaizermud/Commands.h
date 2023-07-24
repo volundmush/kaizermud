@@ -21,15 +21,12 @@ namespace kaizer {
     };
 
     struct Command : BaseCommand {
-        [[nodiscard]] virtual uint8_t getType() = 0;
+        [[nodiscard]] virtual std::set<uint8_t> getCmdMask() = 0;
         [[nodiscard]] virtual OpResult<> canExecute(entt::entity ent, std::unordered_map<std::string, std::string>& input);
         virtual void execute(entt::entity ent, std::unordered_map<std::string, std::string>& input);
         [[nodiscard]] virtual bool isAvailable(entt::entity ent) {return true;};
 
     };
-
-    extern std::map<unsigned long, std::vector<std::pair<std::string, Command*>>> sortedCommandCache;
-    extern std::map<unsigned long, std::unordered_map<std::string, Command*>> commandCache;
 
     extern std::unordered_map<uint8_t, std::unordered_map<std::string, std::shared_ptr<Command>>> commandRegistry, expandedCommandRegistry;
     OpResult<> registerCommand(const std::shared_ptr<Command>& entry);

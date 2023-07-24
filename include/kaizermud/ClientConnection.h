@@ -28,7 +28,7 @@ namespace kaizer {
         std::string hostAddress = "UNKNOWN";
         int16_t hostPort{0};
         std::vector<std::string> hostNames{};
-        std::string encoding = "";
+        std::string encoding;
         bool utf8 = false;
         ColorType colorType = ColorType::NoColor;
         int width = 80, height = 52;
@@ -56,21 +56,21 @@ namespace kaizer {
         virtual void onNetworkDisconnected();
         [[nodiscard]] const ProtocolCapabilities& getCapabilities() const;
         [[nodiscard]] uint64_t getConnID() const;
-        [[nodiscard]] entt::entity getAccount() const;
+        [[nodiscard]] ObjectID getAccount() const;
         virtual void handleText(const std::string& text);
         virtual void handleConnectCommand(const std::string& text);
         virtual void handleBadMatch(const std::string& text, std::unordered_map<std::string, std::string>& matches);
 
 
         // This is a wrapper around the unbound createAccount which will check for abuse.
-        virtual OpResult<entt::entity> createAccount(std::string_view userName, std::string_view password);
+        virtual OpResult<ObjectID> createAccount(std::string_view userName, std::string_view password);
 
-        virtual void onCreateAccount(std::string_view userName, std::string_view password, entt::entity ent);
+        virtual void onCreateAccount(std::string_view userName, std::string_view password, ObjectID id);
         virtual OpResult<> handleLogin(const std::string &userName, const std::string &password);
-        virtual void loginToAccount(entt::entity ent);
+        virtual void loginToAccount(ObjectID id);
         virtual void onLogin();
         virtual void handleLoginCommand(const std::string& text);
-        virtual void createOrJoinSession(entt::entity ent);
+        virtual void createOrJoinSession(ObjectID id);
 
         virtual void displayAccountMenu();
 
@@ -83,7 +83,7 @@ namespace kaizer {
         std::shared_ptr<Session> session;
 
         // A Connection might or might not be logged in.
-        entt::entity account = entt::null;
+        int64_t account{-1};
         // Some time structs to handle when we received connections.
         // These probably need some updating on this and Thermite side...
         LinkManager &lm;
@@ -102,18 +102,18 @@ namespace kaizer {
 
     };
 
-    extern std::unordered_map<std::string, std::set<entt::entity>> accountsCreatedRecently;
+    extern std::unordered_map<std::string, std::set<ObjectID>> accountsCreatedRecently;
 
     // Validator functions for checking whether a new/renamed account/character string is valid.
     // For generating new accounts/characters, set ent = entt::null. For renames, enter the target's entt::entity.
-    extern std::vector<std::function<OpResult<>(std::string_view, entt::entity ent)>> accountUsernameValidators, playerCharacterNameValidators;
-    OpResult<> validateAccountUsername(std::string_view username, entt::entity ent);
-    OpResult<> validatePlayerCharacterName(std::string_view name, entt::entity ent);
+    extern std::vector<std::function<OpResult<>(std::string_view, ObjectID)>> accountUsernameValidators, playerCharacterNameValidators;
+    OpResult<> validateAccountUsername(std::string_view username, ObjectID id);
+    OpResult<> validatePlayerCharacterName(std::string_view name, ObjectID id);
 
     // The below will directly create an account, IF an account can be accounted.
     // For proper usage, you'll want to wrap this in additional checks, like whether
     // the same connection should be allowed to create 1,000 accounts in a minute.
     // Hint: it shouldn't be allowed.
     // the result type is entt::entity, so entt::null will be returned on failure.
-    OpResult<entt::entity> createAccount(std::string_view username, std::string_view password);
+    OpResult<ObjectID> createAccount(std::string_view username, std::string_view password);
 }

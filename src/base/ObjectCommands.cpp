@@ -1,18 +1,21 @@
 #include "kaizermud/base/ObjectCommands.h"
-#include "kaizermud/Api.h"
 #include "boost/algorithm/string.hpp"
 #include "kaizermud/CallParameters.h"
 #include "kaizermud/Components.h"
+#include "kaizermud/Database.h"
+#include "kaizermud/Types.h"
 
 namespace kaizer::base {
 
     void ObjLook::execute(entt::entity ent, std::unordered_map<std::string, std::string> &input) {
-        auto loc = getRelation(ent, "location");
-        if(!registry.valid(loc)) {
-            sendText(ent, "You are nowhere.");
+        auto &objinfo = registry.get<components::ObjectInfo>(ent);
+        auto loc = objinfo.type->getRelation(objinfo.id, static_cast<int>(RelationKind::Location));
+        if(loc == -1) {
+            objinfo.type->sendText(objinfo.id, "You are nowhere.");
             return;
         }
-        atLook(ent, loc);
+        auto &look = registry.get_or_emplace<components::PendingLook>(ent);
+        look.target = loc;
     }
 
     void ObjHelp::execute(entt::entity ent, std::unordered_map<std::string, std::string> &input) {
@@ -36,8 +39,9 @@ namespace kaizer::base {
 
     OpResult<> ObjMove::canExecute(entt::entity ent, std::unordered_map<std::string, std::string> &input) {
         // This command requires that ent be in a location.
-        auto loc = getRelation(ent, "location");
-        if(!registry.valid(loc)) {
+        auto &objinfo = registry.get<components::ObjectInfo>(ent);
+        auto loc = objinfo.type->getRelation(objinfo.id, static_cast<int>(RelationKind::Location));
+        if(loc == -1) {
             return {false, "You are somewhere beyond space and time... ordinary movement will not avail you."};
         }
         return {true, std::nullopt};
@@ -47,13 +51,13 @@ namespace kaizer::base {
         // Next we must determine the direction that the player wants to move.
         // If this command was called as move, go, or mv, we need to retrieve args
         // from input. Otherwise, input["cmd"] itself is the direction.
-
+        auto &objinfo = registry.get<components::ObjectInfo>(ent);
         std::string dir;
         auto cmd = input["cmd"];
         if (boost::iequals(cmd, "move") || boost::iequals(cmd, "go") || boost::iequals(cmd, "mv")) {
             dir = input["args"];
             if(dir.empty()) {
-                sendText(ent, "Usage: move <direction>");
+                objinfo.type->sendText(objinfo.id, "Usage: move <direction>");
                 return;
             }
         } else {
@@ -68,34 +72,37 @@ namespace kaizer::base {
         }
 
         // Now we have a direction. We need to find the exit that matches it.
-        auto loc = getRelation(ent, "location");
-        auto exits = registry.try_get<components::Exits>(loc);
-        if (exits->data.empty()) {
-            sendText(ent, "You can't go anywhere from here.");
+        auto loc = objinfo.type->getRelation(objinfo.id, static_cast<int>(RelationKind::Location));
+        auto locType = ::kaizer::getType(loc);
+        auto exits = locType->getReverseRelation(loc, static_cast<int>(RelationKind::Exit));
+        if (exits.empty()) {
+            objinfo.type->sendText(objinfo.id, "You can't go anywhere from here.");
             return;
         }
 
-        auto &ex = exits->data;
-
         // Now we have a list of exits. We need to find the one that matches the direction.
-        auto exit = ex.find(dir);
+        auto exit = std::find_if(exits.begin(), exits.end(), [&dir](auto &ex) {
+            auto ext = ::kaizer::getType(ex);
+            return boost::iequals(ext->getName(ex), dir);
+        });
 
-        if (exit == ex.end()) {
-            sendText(ent, "You can't go that way.");
+        if (exit == exits.end()) {
+            objinfo.type->sendText(objinfo.id, "You can't go that way.");
             return;
         }
 
         // Now that we have an exit, we schedule the move.
         CallParameters param;
-        param.setEntity("mover", ent);
-        param.setEntity("exit", exit->second);
-        auto &exdata = registry.get<components::Exit>(exit->second);
-        param.setEntity("destination", exdata.destination);
+        param.setEntity("mover", objinfo.id);
+        param.setEntity("exit", *exit);
+        auto ext = ::kaizer::getType(*exit);
+        auto dest = ext->getRelation(*exit, static_cast<int>(RelationKind::Destination));
+        param.setEntity("destination", dest);
         param.setString("moveType", "move");
 
         auto &pmove = registry.get_or_emplace<components::PendingMove>(ent);
         pmove.params = param;
-        pmove.reportTo = ent;
+        pmove.reportTo = objinfo.id;
     }
 
 
@@ -152,27 +159,22 @@ namespace kaizer::base {
     }
 
     void registerObjectCommands() {
-        std::vector<std::shared_ptr<Command>> commands;
-        commands.push_back(std::make_shared<ObjLook>());
-        commands.push_back(std::make_shared<ObjHelp>());
-        commands.push_back(std::make_shared<ObjMove>());
-        commands.push_back(std::make_shared<ObjQuit>());
-        commands.push_back(std::make_shared<ObjSay>());
-        commands.push_back(std::make_shared<ObjPose>());
-        commands.push_back(std::make_shared<ObjSemipose>());
-        commands.push_back(std::make_shared<ObjWhisper>());
-        commands.push_back(std::make_shared<ObjShout>());
-        commands.push_back(std::make_shared<ObjGet>());
-        commands.push_back(std::make_shared<ObjTake>());
-        commands.push_back(std::make_shared<ObjPut>());
-        commands.push_back(std::make_shared<ObjGive>());
-        commands.push_back(std::make_shared<ObjDrop>());
-        commands.push_back(std::make_shared<ObjInventory>());
-        commands.push_back(std::make_shared<ObjEquip>());
-
-        for(auto &command : commands) {
-            registerCommand(command);
-        }
+        registerCommand(std::make_shared<ObjLook>());
+        registerCommand(std::make_shared<ObjHelp>());
+        registerCommand(std::make_shared<ObjMove>());
+        registerCommand(std::make_shared<ObjQuit>());
+        registerCommand(std::make_shared<ObjSay>());
+        registerCommand(std::make_shared<ObjPose>());
+        registerCommand(std::make_shared<ObjSemipose>());
+        registerCommand(std::make_shared<ObjWhisper>());
+        registerCommand(std::make_shared<ObjShout>());
+        registerCommand(std::make_shared<ObjGet>());
+        registerCommand(std::make_shared<ObjTake>());
+        registerCommand(std::make_shared<ObjPut>());
+        registerCommand(std::make_shared<ObjGive>());
+        registerCommand(std::make_shared<ObjDrop>());
+        registerCommand(std::make_shared<ObjInventory>());
+        registerCommand(std::make_shared<ObjEquip>());
     }
 
 }

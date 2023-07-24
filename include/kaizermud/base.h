@@ -24,8 +24,6 @@ namespace kaizer {
     extern entt::registry registry;
     extern std::unordered_map<ObjectID, entt::entity> entities;
 
-    OpResult<entt::entity> createEntity(std::optional<ObjectID> id = std::nullopt);
-
     enum class ColorType : uint8_t {
         NoColor = 0,
         Standard = 1,

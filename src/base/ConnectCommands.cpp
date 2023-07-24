@@ -36,7 +36,7 @@ namespace kaizer::base {
             std::string password = match["password"];
             boost::trim_if(username, boost::algorithm::is_any_of("\""));
             auto [res, err] = connection->createAccount(username, password);
-            if(!registry.valid(res)) {
+            if(res == -1) {
                 connection->sendText(fmt::format("Error: {}", err.value()));
                 return;
             }

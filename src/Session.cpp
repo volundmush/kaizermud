@@ -1,12 +1,13 @@
 #include "kaizermud/Session.h"
 #include "kaizermud/game.h"
 #include "kaizermud/Components.h"
-#include "kaizermud/Api.h"
 #include "fmt/format.h"
+#include "kaizermud/Types.h"
+#include "kaizermud/Database.h"
 
 namespace kaizer {
 
-    Session::Session(ObjectID id, entt::entity character, entt::entity account) {
+    Session::Session(ObjectID id, ObjectID account, entt::entity character) {
         this->id = id;
         this->character = character;
         puppet = character;
@@ -15,15 +16,17 @@ namespace kaizer {
     }
 
     void Session::start() {
-        sendText(fmt::format("You have joined the game as {}\n", getDisplayName(character, character)));
-        unstowCharacter(character);
+        auto &objinfo = registry.get<components::ObjectInfo>(character);
+        sendText(fmt::format("You have joined the game as {}\n", objinfo.type->getDisplayName(objinfo.id, objinfo.id)));
+        objinfo.type->unstow(objinfo.id);
     }
 
     void Session::end() {
+        auto &objinfo = registry.get<components::ObjectInfo>(character);
         if(puppet != character) {
             changePuppet(character);
         }
-        stowCharacter(character);
+        objinfo.type->stow(objinfo.id);
     }
 
     void Session::send(const Message &msg) {
@@ -149,7 +152,7 @@ namespace kaizer {
         return puppet;
     }
 
-    entt::entity Session::getAccount() {
+    ObjectID Session::getAccount() {
         return account;
     }
 
@@ -166,16 +169,17 @@ namespace kaizer {
     }
 
     int16_t Session::getAdminLevel() {
-        auto acc = registry.try_get<components::Account>(account);
-        if(acc) {
-            return acc->level;
+        SQLite::Statement q(*db, "SELECT adminLevel FROM accounts WHERE id = ?");
+        q.bind(1, account);
+        if(q.executeStep()) {
+            return q.getColumn(0).getInt();
         }
         return 0;
     }
 
-    std::shared_ptr<Session> defaultMakeSession(ObjectID id, entt::entity account, entt::entity character) {
-        return std::make_shared<Session>(id, character, account);
+    std::shared_ptr<Session> defaultMakeSession(ObjectID id, ObjectID account, entt::entity character) {
+        return std::make_shared<Session>(id, account, character);
     }
-    std::function<std::shared_ptr<Session>(ObjectID, entt::entity, entt::entity)> makeSession(defaultMakeSession);
+    std::function<std::shared_ptr<Session>(ObjectID, ObjectID, entt::entity)> makeSession(defaultMakeSession);
 
 }

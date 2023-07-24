@@ -3,63 +3,21 @@
 #include "kaizermud/Types.h"
 
 namespace kaizer::base {
-
-    enum class ObjectType : std::size_t {
-        // Tier 0 exclusively contains the base Object type. Nothing else should be a Tier 0 type.
-        // Object represents any in-game entity with a "physical presence" in the game world, though
-        // that might be slightly abstract, like "the room you are in."
-        Object     = 0,
-        // Tier 1 ObjectTypes are the base Types.
-        // Generally, everything will be a combination of Object and a tier 1 type.
-        Item       = 1,
-        Character  = 2,
-        Room       = 3,
-        Exit       = 4,
-        Grid       = 5,
-        Sector     = 6,
-        Area       = 7,
-        
-        // Tier 2 types. Some objects might have a Tier 2. By default that's Character->NPC or
-        // Character->Player.
-        NPC        = 16,
-        Player     = 17,
-        
-        // Tier 3? These should probably start at 24 or 28... there should be very, very few of these.
-    };
-    
-    /*
-     * The base "object" Type is used for all in-game entities. Whenever a resource
-     * is shared by all kinds of things, it should be tied to this Type.
-     */
-    struct Object : Type {
-        [[nodiscard]] std::size_t getID() const override {return 0;}
-        [[nodiscard]] std::string_view getName() const override {return "Object";}
-
-    };
-
-    /*
-     * The base "character" Type is used for all in-game characters. Whenever a resource
-     * is shared by all kinds of characters, it should be tied to this Type.
-     */
-    struct Character : Type {
-        [[nodiscard]] std::size_t getID() const override {return 2;}
-        [[nodiscard]] std::string_view getName() const override {return "Character";}
-    };
-
-    /*
+        /*
      * The base "player" Type is used for all player characters.
+     * In practice, player and npc should probably share a base class...
      */
     struct Player : Type {
-        [[nodiscard]] std::size_t getID() const override {return 17;}
-        [[nodiscard]] std::string_view getName() const override {return "Player";}
+        Player();
+        [[nodiscard]] std::string getTypeName() const override {return "player";}
     };
 
     /*
      * This is for NPCs, aka, "Non-Player Characters".
      */
     struct NPC : Type {
-        [[nodiscard]] std::size_t getID() const override {return 16;}
-        [[nodiscard]] std::string_view getName() const override {return "NPC";}
+        NPC();
+        [[nodiscard]] std::string getTypeName() const override {return "npc";}
     };
 
     /*
@@ -67,8 +25,8 @@ namespace kaizer::base {
      * is shared by all kinds of rooms, it should be tied to this Type.
      */
     struct Room : Type {
-        [[nodiscard]] std::size_t getID() const override { return 3; }
-        [[nodiscard]] std::string_view getName() const override { return "Room"; }
+        Room();
+        [[nodiscard]] std::string getTypeName() const override { return "room"; }
     };
 
     /*
@@ -76,8 +34,8 @@ namespace kaizer::base {
      * is shared by all kinds of exits, it should be tied to this Type.
      */
     struct Exit : Type {
-        [[nodiscard]] std::size_t getID() const override { return 4; }
-        [[nodiscard]] std::string_view getName() const override { return "Exit"; }
+        Exit();
+        [[nodiscard]] std::string getTypeName() const override { return "exit"; }
     };
 
     /*
@@ -85,8 +43,8 @@ namespace kaizer::base {
      * is shared by all kinds of items, it should be tied to this Type.
      */
     struct Item : Type {
-        [[nodiscard]] std::size_t getID() const override { return 1; }
-        [[nodiscard]] std::string_view getName() const override { return "Item"; }
+        Item();
+        [[nodiscard]] std::string getTypeName() const override { return "item"; }
     };
 
     /*
@@ -100,8 +58,8 @@ namespace kaizer::base {
      * Areas can also be used to group other Areas in an "area tree".
      */
     struct Area : Type {
-        [[nodiscard]] std::size_t getID() const override { return 7; }
-        [[nodiscard]] std::string_view getName() const override { return "Area"; }
+        Area();
+        [[nodiscard]] std::string getTypeName() const override { return "area"; }
     };
 
     /*
@@ -109,8 +67,8 @@ namespace kaizer::base {
      * overworld map instead of Rooms. Implementation TBD.
      */
     struct Grid : Type {
-        [[nodiscard]] std::size_t getID() const override { return 5; }
-        [[nodiscard]] std::string_view getName() const override { return "Grid"; }
+        Grid();
+        [[nodiscard]] std::string getTypeName() const override { return "grid"; }
     };
 
     /*
@@ -119,8 +77,8 @@ namespace kaizer::base {
      * and other things floating in an endless void. Implementation TBD.
      */
     struct Sector : Type {
-        [[nodiscard]] std::size_t getID() const override { return 6; }
-        [[nodiscard]] std::string_view getName() const override { return "Sector"; }
+        Sector();
+        [[nodiscard]] std::string getTypeName() const override { return "sector"; }
     };
 
     void registerTypes();

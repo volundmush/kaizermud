@@ -12,8 +12,8 @@
 namespace kaizer::components {
 
     struct ObjectInfo {
-        ObjectID id{-1};
-        std::bitset<32> typeFlags{};
+        ObjectID id{-1}, ref{-1};
+        Type* type{nullptr};
     };
 
     struct Account {
@@ -86,12 +86,27 @@ namespace kaizer::components {
         entt::entity destination{entt::null};
     };
 
+    enum class Direction : uint8_t {
+        North = 0,
+        East = 1,
+        South = 2,
+        West = 3,
+        Up = 4,
+        Down = 5,
+        Northwest = 6,
+        Northeast = 7,
+        Southeast = 8,
+        Southwest = 9,
+        Inside = 10,
+        Outside = 11
+    };
+
     struct Exits {
-        std::unordered_map<std::string, entt::entity> data{};
+        std::unordered_map<Direction, entt::entity> data{};
     };
 
     struct Entrances {
-        std::unordered_map<std::string, entt::entity> data{};
+        std::unordered_map<Direction, entt::entity> data{};
     };
 
     struct SavedLocations {
@@ -111,11 +126,11 @@ namespace kaizer::components {
 
     struct PendingMove {
         CallParameters params;
-        entt::entity reportTo{entt::null};
+        ObjectID reportTo{-1};
     };
 
     struct PendingLook {
-        entt::entity target{entt::null};
+        ObjectID target{-1};
     };
 
 }

@@ -8,7 +8,7 @@
 #include "spdlog/spdlog.h"
 #include "kaizermud/Color.h"
 #include "kaizermud/game.h"
-#include "kaizermud/Api.h"
+#include "kaizermud/Database.h"
 
 namespace kaizer {
 
@@ -144,7 +144,7 @@ namespace kaizer {
 
         if(session)
             session->handleText(str);
-        else if(registry.valid(account))
+        else if(account != -1)
             handleLoginCommand(str);
         else
             handleConnectCommand(str);
@@ -234,70 +234,92 @@ namespace kaizer {
         return connID;
     }
 
-    entt::entity ClientConnection::getAccount() const {
+    ObjectID ClientConnection::getAccount() const {
         return account;
     }
 
-    OpResult<entt::entity> ClientConnection::createAccount(std::string_view userName, std::string_view password) {
+    OpResult<ObjectID> ClientConnection::createAccount(std::string_view userName, std::string_view password) {
         // First, get the IP without the port from this->capabilities.
         // Then, get the set of accounts created recently for that IP.
 
         auto &created = accountsCreatedRecently[this->capabilities.hostAddress];
         // If the set is empty, then we can create an account.
         if (!created.empty())
-            return {entt::null, "You have created too many accounts recently. Please try again later."};
+            return {-1, "You have created too many accounts recently. Please try again later."};
 
-        auto [ent, err] = kaizer::createAccount(userName, password);
+        auto [id, err] = kaizer::createAccount(userName, password);
         if(err.has_value())
-            return {entt::null, err};
+            return {-1, err};
 
-        created.insert(ent);
+        created.insert(id);
 
-        onCreateAccount(userName, password, ent);
-        return {ent, std::nullopt};
+        onCreateAccount(userName, password, id);
+        return {id, std::nullopt};
     }
 
-    void ClientConnection::onCreateAccount(std::string_view userName, std::string_view password, entt::entity ent) {
+    void ClientConnection::onCreateAccount(std::string_view userName, std::string_view password, ObjectID id) {
         sendText(fmt::format("Account created successfully. Welcome, {}!\r\n", userName));
         sendText(fmt::format("Please keep your password safe and secure. If you forget it, contact staff.\r\n"));
-        loginToAccount(ent);
+        loginToAccount(id);
     }
 
-    void ClientConnection::loginToAccount(entt::entity ent) {
-        account = ent;
-        auto &acc = registry.get<components::Account>(ent);
-        acc.connections[connID] = shared_from_this();
+    void ClientConnection::loginToAccount(ObjectID id) {
+        account = id;
         onLogin();
     }
 
     void ClientConnection::onLogin() {
-        sendText(fmt::format("Welcome back, {}!\r\n", registry.get<components::Account>(account).username));
+        SQLite::Statement q(*db, "UPDATE accounts SET lastLogin = datetime('now') WHERE id = ?");
+        q.bind(1, account);
+        q.exec();
+
+        SQLite::Statement q2(*db, "SELECT username FROM accounts WHERE id = ?");
+        q2.bind(1, account);
+        std::string name;
+        while(q2.executeStep()) {
+            name = q2.getColumn(0).getString();
+        }
+
+        sendText(fmt::format("Welcome back, {}!\r\n", name));
         displayAccountMenu();
     }
 
     void ClientConnection::displayAccountMenu() {
-        auto &acc = registry.get<components::Account>(account);
+        std::string username, email;
+        int level;
+        SQLite::Statement q(*db, "SELECT username, email, adminLevel FROM accounts WHERE id = ?");
+        q.bind(1, account);
+        while(q.executeStep()) {
+            username = q.getColumn(0).getString();
+            email = q.getColumn(1).getString();
+            level = q.getColumn(2).getInt();
+        }
         sendText("                 @RAccount Menu@n\n");
         sendText("=============================================\n");
-        sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Username", acc.username));
-        if(!acc.email.empty())
-            sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Email Address", acc.email));
-        if(acc.level > 0)
-            sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Admin Level", acc.level));
+        sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Username", username));
+        if(!email.empty())
+            sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Email Address", email));
+        if(level > 0)
+            sendText(fmt::format("|@g{:<14}@n:  {:<27}|\n", "Admin Level", level));
         sendText("=============================================\n\n");
 
-        std::vector<entt::entity> characters;
-        for(auto o : acc.characters) {
-            auto found = entities.find(o);
-            if(found != entities.end()) {
-                characters.push_back(found->second);
-            }
+        std::vector<ObjectID> characters;
+        SQLite::Statement q2(*db, "SELECT character,lastLogin,lastLogout,totalPlayTime FROM playerCharacters WHERE account = ?");
+        q2.bind(1, account);
+        while(q2.executeStep()) {
+            auto character = q2.getColumn(0).getInt64();
+            auto lastLogin = q2.getColumn(1).getString();
+            auto lastLogout = q2.getColumn(2).getString();
+            auto totalPlayTime = q2.getColumn(3).getString();
+
+            characters.push_back(character);
         }
 
         if(!characters.empty()) {
             sendText("[@y----@YAvailable Characters@y----@n]\n");
-            for(auto ent : characters) {
-                sendText(getDisplayName(ent, ent) + "\n");
+            for(auto c : characters) {
+                auto ct = getType(c);
+                sendText(ct->getName(c) + "\n");
             }
         }
 
@@ -311,23 +333,23 @@ namespace kaizer {
     }
 
     OpResult<> ClientConnection::handleLogin(const std::string &userName, const std::string &password) {
-        auto view = registry.view<components::Account>();
-
-        for(auto& entity : view) {
-            auto& acc = view.get<components::Account>(entity);
-            if(boost::iequals(acc.username, userName)) {
-                auto [check, err] = acc.checkPassword(password);
-                if(!check) {
-                    return {false, err};
-                }
-                loginToAccount(entity);
-                return {true, std::nullopt};
+        SQLite::Statement q(*db, "SELECT id,password FROM accounts WHERE username = ?");
+        q.bind(1, userName);
+        while(q.executeStep()) {
+            auto id = q.getColumn(0).getInt64();
+            auto pass = q.getColumn(1).getString();
+            auto [check, err] = kaizer::checkPassword(pass, password);
+            if(!check) {
+                return {false, err};
             }
+            loginToAccount(id);
+            return {true, std::nullopt};
         }
         return {false, "No such account.\n"};
     }
 
-    void ClientConnection::createOrJoinSession(entt::entity ent) {
+    void ClientConnection::createOrJoinSession(ObjectID id) {
+        auto ent = getEntity(id);
         auto sessholder = registry.try_get<components::SessionHolder>(ent);
 
         if(sessholder) {
@@ -335,7 +357,6 @@ namespace kaizer {
             // to it.
             session = sessholder->data;
         } else {
-            auto id = getID(ent);
             // The character has no session, so we need to create one and join the clientConnection to it.
             session = makeSession(id, account, ent);
             state::sessions[id] = session;
@@ -347,46 +368,39 @@ namespace kaizer {
     }
 
 
-    std::unordered_map<std::string, std::set<entt::entity>> accountsCreatedRecently;
+    std::unordered_map<std::string, std::set<ObjectID>> accountsCreatedRecently;
 
     // Validator functions for checking whether a new/renamed account/character string is valid.
     // For generating new accounts/characters, set ent = entt::null. For renames, enter the target's entt::entity.
-    std::vector<std::function<OpResult<>(std::string_view, entt::entity ent)>> accountUsernameValidators, playerCharacterNameValidators;
+    std::vector<std::function<OpResult<>(std::string_view, ObjectID)>> accountUsernameValidators, playerCharacterNameValidators;
 
-    OpResult<> validateAccountUsername(std::string_view username, entt::entity ent) {
+    OpResult<> validateAccountUsername(std::string_view username, ObjectID id) {
         for (auto &validator : accountUsernameValidators) {
-            auto [res, err] = validator(username, ent);
+            auto [res, err] = validator(username, id);
             if (!res) return {res, err};
         }
         return {true, std::nullopt};
     }
 
-    OpResult<> validatePlayerCharacterName(std::string_view name, entt::entity ent) {
+    OpResult<> validatePlayerCharacterName(std::string_view name, ObjectID id) {
         for (auto &validator : playerCharacterNameValidators) {
-            auto [res, err] = validator(name, ent);
+            auto [res, err] = validator(name, id);
             if (!res) return {res, err};
         }
         return {true, std::nullopt};
     }
 
-    OpResult<entt::entity> createAccount(std::string_view username, std::string_view password) {
-        auto [res, err] = validateAccountUsername(username, entt::null);
-        if (!res) return {entt::null, err};
+    OpResult<ObjectID> createAccount(std::string_view username, std::string_view password) {
+        auto [res, err] = validateAccountUsername(username, -1);
+        if (!res) return {-1, err};
         auto [res2, err2] = hashPassword(password);
-        if (!res2) return {entt::null, err2};
-        auto [ent, err3] = createEntity();
-        if (err3.has_value()) return {entt::null, err3};
+        if (!res2) return {-1, err2};
 
-        auto &account = registry.emplace<components::Account>(ent);
-        account.username = username;
-        account.password = err2.value();
-        account.created = std::chrono::system_clock::now();
-        account.lastLogin = std::chrono::system_clock::now();
-        account.lastLogout = std::chrono::system_clock::now();
-        account.lastPasswordChanged = std::chrono::system_clock::now();
-        return {ent, std::nullopt};
+        SQLite::Statement q(*db, "INSERT INTO accounts (username, password) VALUES (?, ?)");
+        q.bind(1, std::string(username));
+        q.bind(2, err2.value());
+        q.exec();
+        auto id = db->getLastInsertRowid();
+        return {id, std::nullopt};
     }
-
-
-
 }

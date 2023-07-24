@@ -3,8 +3,8 @@
 #include "kaizermud/Session.h"
 #include "kaizermud/Components.h"
 #include "kaizermud/Commands.h"
-#include "kaizermud/Api.h"
 #include "boost/algorithm/string.hpp"
+#include "kaizermud/Database.h"
 
 namespace kaizer {
     std::vector<std::shared_ptr<System>> sortedSystems;
@@ -84,11 +84,17 @@ namespace kaizer {
     }
 
     void ProcessCommands::handleBadMatch(entt::entity ent, std::unordered_map<std::string, std::string>& input) {
-        sendText(ent, "I don't understand that command.\n");
+        auto sess = registry.try_get<components::SessionHolder>(ent);
+        if(sess) {
+            sess->data->sendText("I don't understand that command.\n");
+        }
     }
 
     void ProcessCommands::handleNotFound(entt::entity ent, std::unordered_map<std::string, std::string> &input) {
-        sendText(ent, "I don't understand that command.\n");
+        auto sess = registry.try_get<components::SessionHolder>(ent);
+        if(sess) {
+            sess->data->sendText("I don't understand that command.\n");
+        }
     }
 
     bool ProcessCommands::checkHooks(entt::entity ent, std::unordered_map<std::string, std::string> &input) {
@@ -101,13 +107,15 @@ namespace kaizer {
     bool ProcessCommands::checkCommands(entt::entity ent, std::unordered_map<std::string, std::string> &input) {
         // This one will check if the command is a valid command.
         // Return true if the command was handled, else return false.
-        auto commands = getSortedCommands(ent);
+        auto &objinfo = registry.get<components::ObjectInfo>(ent);
+
+        auto commands = objinfo.type->getSortedCommands();
         for(auto &[key, cmd] : commands) {
             if(boost::iequals(key, input["cmd"])) {
                 // We have a match!
                 auto [canExecute, err] = cmd->canExecute(ent, input);
                 if(!canExecute) {
-                    sendText(ent, err.value());
+                    objinfo.type->sendText(objinfo.id, err.value());
                 } else {
                     // We can execute the command!
                     cmd->execute(ent, input);
@@ -155,13 +163,14 @@ namespace kaizer {
     }
 
     boost::asio::awaitable<void> ProcessMovement::run(double deltaTime) {
-        auto view = registry.view<components::PendingMove>();
+        auto view = registry.view<components::PendingMove, components::ObjectInfo>();
 
         for(auto& entity : view) {
             auto &pending = view.get<components::PendingMove>(entity);
-            auto [res, err] = moveTo(entity, pending.params);
+            auto &objinfo = view.get<components::ObjectInfo>(entity);
+            auto [res, err] = objinfo.type->moveTo(objinfo.id, pending.params);
             if(!res) {
-                sendText(pending.reportTo, err.value());
+                objinfo.type->sendText(objinfo.id, err.value());
             }
         }
         registry.clear<components::PendingMove>();
@@ -170,11 +179,12 @@ namespace kaizer {
     }
 
     boost::asio::awaitable<void> ProcessLook::run(double deltaTime) {
-        auto view = registry.view<components::PendingLook>();
+        auto view = registry.view<components::PendingLook, components::ObjectInfo>();
 
         for(auto& entity : view) {
             auto &pending = view.get<components::PendingLook>(entity);
-            atLook(entity, pending.target);
+            auto &objinfo = view.get<components::ObjectInfo>(entity);
+            objinfo.type->atLook(objinfo.id, pending.target);
         }
         registry.clear<components::PendingLook>();
         co_return;

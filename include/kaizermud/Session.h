@@ -12,7 +12,7 @@ namespace kaizer {
     // multiple locations.
     class Session {
     public:
-        Session(ObjectID id, entt::entity account, entt::entity character);
+        Session(ObjectID id, ObjectID account, entt::entity character);
         virtual ~Session() = default;
 
         virtual void start();
@@ -51,7 +51,7 @@ namespace kaizer {
 
         virtual entt::entity getCharacter();
         virtual entt::entity getPuppet();
-        virtual entt::entity getAccount();
+        virtual ObjectID getAccount();
 
         virtual int16_t getAdminLevel();
 
@@ -71,7 +71,7 @@ namespace kaizer {
         // the puppet.
         entt::entity puppet;
         // The account we are using the permissions of.
-        entt::entity account;
+        ObjectID account{-1};
 
         // This is a map of all the connections that are currently linked to this session.
         std::unordered_map<uint64_t, std::shared_ptr<ClientConnection>> clients;
@@ -83,7 +83,7 @@ namespace kaizer {
         int totalConnections{0};
     };
 
-    extern std::function<std::shared_ptr<Session>(ObjectID, entt::entity, entt::entity)> makeSession;
-    std::shared_ptr<Session> defaultMakeSession(ObjectID id, entt::entity account, entt::entity character);
+    extern std::function<std::shared_ptr<Session>(ObjectID, ObjectID, entt::entity)> makeSession;
+    std::shared_ptr<Session> defaultMakeSession(ObjectID id, ObjectID account, entt::entity character);
 
 }

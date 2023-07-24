@@ -4,9 +4,9 @@
 namespace kaizer {
     class Search {
     public:
-        explicit Search(entt::entity ent);
-        Search& in(entt::entity container);
-        Search& eq(entt::entity equipment);
+        explicit Search(ObjectID id);
+        Search& in(ObjectID id);
+        Search& eq(ObjectID id);
         Search& sense(std::string_view sense);
         Search& useID(bool useID);
         Search& useSelf(bool useSelf);
@@ -14,15 +14,15 @@ namespace kaizer {
         Search& useHere(bool useHere);
         Search& useAsterisk(bool useAsterisk);
 
-        virtual std::vector<entt::entity> find(std::string_view name);
+        virtual std::vector<ObjectID> find(const std::string& input);
 
     protected:
-        OpResult<entt::entity> _simplecheck(std::string_view name);
-        bool detect(entt::entity target);
-        entt::entity ent;
+        OpResult<ObjectID> _simplecheck(const std::string& name);
+        bool detect(ObjectID target);
+        ObjectID id;
         std::string txt;
-        std::vector<entt::entity> containers;
-        std::vector<entt::entity> equipments;
+        std::vector<ObjectID> containers;
+        std::vector<ObjectID> equipments;
         std::set<std::string> senses;
         bool allowID{false};
         bool allowSelf{true};

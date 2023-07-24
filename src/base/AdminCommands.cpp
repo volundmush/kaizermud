@@ -1,38 +1,41 @@
+#include <kaizermud/CallParameters.h>
 #include "kaizermud/base/AdminCommands.h"
 #include "kaizermud/Search.h"
-#include "kaizermud/Api.h"
 #include "fmt/format.h"
+#include "kaizermud/Types.h"
+#include "kaizermud/Components.h"
+#include "kaizermud/Database.h"
 
 namespace kaizer::base {
     void AdmTeleport::execute(entt::entity ent, std::unordered_map<std::string, std::string> &input) {
         // lsargs is who or what's being teleported and rsargs is the destination...
         auto lsargs = input["lsargs"];
         auto rsargs = input["rsargs"];
-
+        auto &objinfo = registry.get<::kaizer::components::ObjectInfo>(ent);
         if (lsargs.empty() || rsargs.empty()) {
-            sendText(ent, "Usage: @teleport <target>=<destination>");
+            objinfo.type->sendText(objinfo.id, "Usage: @teleport <target>=<destination>");
             return;
         }
 
-        auto loc = getRelation(ent, "location");
+        auto loc = objinfo.type->getRelation(objinfo.id, static_cast<int>(RelationKind::Location));
 
-        auto lsearch = Search(ent).useID(true).useSelf(true).useAll(false).useHere(true);
-        if(registry.valid(loc)) {
+        auto lsearch = Search(objinfo.id).useID(true).useSelf(true).useAll(false).useHere(true);
+        if(loc != -1) {
             lsearch.in(loc);
         }
         auto target = lsearch.find(lsargs);
         if (target.empty()) {
-            sendText(ent, "No target found.");
+            objinfo.type->sendText(objinfo.id, "No target found.");
             return;
         }
 
-        auto rsearch = Search(ent).useID(true).useSelf(true).useAll(false).useHere(true);
-        if(registry.valid(loc)) {
+        auto rsearch = Search(objinfo.id).useID(true).useSelf(true).useAll(false).useHere(true);
+        if(loc != -1) {
             rsearch.in(loc);
         }
         auto destination = rsearch.find(rsargs);
         if (destination.empty()) {
-            sendText(ent, "No destination found.");
+            objinfo.type->sendText(objinfo.id, "No destination found.");
             return;
         }
 
@@ -40,13 +43,12 @@ namespace kaizer::base {
         params.setEntity("destination", destination[0]);
         params.setEntity("mover", target[0]);
         params.setString("moveType", "system");
-        auto [res, err] = moveTo(target[0], params);
 
-        if (res) {
-            sendText(ent, "Teleported.");
-        } else {
-            sendText(ent, fmt::format("Teleport failed: {}", err.value()));
-        }
+        auto tent = getEntity(target[0]);
+        auto &tinfo = registry.get<::kaizer::components::ObjectInfo>(tent);
+        auto &pending = registry.get_or_emplace<::kaizer::components::PendingMove>(tent);
+        pending.params = params;
+        pending.reportTo = objinfo.id;
 
     }
 

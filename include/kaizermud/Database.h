@@ -3,40 +3,26 @@
 #include "kaizermud/base.h"
 #include "SQLiteCpp/SQLiteCpp.h"
 #include "nlohmann/json.hpp"
+#include "kaizermud/Types.h"
 
 namespace kaizer {
+    extern std::shared_ptr<SQLite::Database> db;
     extern std::unordered_map<std::string, std::shared_ptr<SQLite::Database>> extraDB;
 
     extern std::vector<std::string> schema;
 
-    extern std::vector<std::function<void(const std::shared_ptr<SQLite::Database>&)>> preLoadFuncs, postLoadFuncs, preSaveFuncs, postSaveFuncs;
-
-    extern std::vector<std::function<void(entt::entity, nlohmann::json&, bool)>> serializeFuncs;
-    extern std::vector<std::function<void(entt::entity, const nlohmann::json&)>> deserializeFuncs;
+    extern std::vector<std::function<void()>> loadFuncs;
 
     void runQuery(const std::shared_ptr<SQLite::Database>& db, std::string_view query);
 
-    void createSchema(const std::shared_ptr<SQLite::Database>& db);
+    void createSchema();
 
-    std::chrono::high_resolution_clock::duration saveToDB(entt::entity ent, const std::shared_ptr<SQLite::Database>& db);
+    void readyDatabase();
 
-    void loadFromDB(entt::entity ent, const std::shared_ptr<SQLite::Database>& db);
+    entt::entity getEntity(ObjectID id);
 
-    void loadDatabase(std::string_view path);
-
-    void saveDatabase(std::string_view path);
-
-    nlohmann::json serializeObject(entt::entity ent, bool asPrototype = false);
-
-    void deserializeObject(entt::entity ent, const nlohmann::json& j);
-
-    void savePrototype(std::string_view name, const nlohmann::json& j);
-    std::optional<nlohmann::json> loadPrototype(std::string_view name);
-
-    std::string generateDbFilename();
-
-    void loadLatestSave();
-
-    void saveSnapShot();
+    Type* getType(const std::string& name);
+    Type* getType(ObjectID id);
+    Type* getType(entt::entity ent);
 
 }

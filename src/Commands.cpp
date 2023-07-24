@@ -45,8 +45,10 @@ namespace kaizer {
         if(entry->getCmdName().empty()) {
             return {false, "CommandEntry cmdName cannot be empty"};
         }
-        auto &reg = commandRegistry[entry->getType()];
-        reg[std::string(entry->getCmdName())] = entry;
+        for(auto i : entry->getCmdMask()) {
+            auto &reg = commandRegistry[i];
+            reg[std::string(entry->getCmdName())] = entry;
+        }
         return {true, std::nullopt};
     }
 

@@ -2,15 +2,15 @@
 
 namespace kaizer {
 
-    CallParameters& CallParameters::setEntity(std::string_view name, entt::entity ent) {
+    CallParameters& CallParameters::setEntity(std::string_view name, ObjectID ent) {
         entities[std::string(name)] = ent;
         return *this;
     }
 
 
-    entt::entity CallParameters::getEntity(std::string_view name) const {
+    ObjectID CallParameters::getEntity(std::string_view name) const {
         auto it = entities.find(std::string(name));
-        if(it == entities.end()) return entt::null;
+        if(it == entities.end()) return -1;
         return it->second;
     }
 
